@@ -1,0 +1,59 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> clean-things@0.6.0 test
+> node --test tests/core.test.js tests/backend.test.js tests/regression.test.cjs tests/database.test.cjs tests/theme-contrast.test.js tests/location.test.js tests/workflow.test.js
+
+Backend adapter tests passed.
+✔ tests/backend.test.js (107.92547ms)
+All Clean Things core tests passed.
+✔ tests/core.test.js (89.943476ms)
+▶ DB: customer isolation, availability, proof policy and recovery
+  ✔ SEC-01 anonymous booking denied (6.476089ms)
+  ✔ DATA-01 valid booking and retry return one record (22.968326ms)
+  ✔ SEC-02 other customer cannot read booking/profile (4.83624ms)
+  ✔ AVL-01 occupied slot visible without private details (2.965384ms)
+  ✔ AVL-02 conflicting account booking denied (2.651662ms)
+  ✔ SEC-03 customer cannot change other booking via RPC (3.013437ms)
+  ✔ SEC-04 customer cannot promote own role or edit prices/settings (3.846219ms)
+  ✔ VAL-01 missing/invalid schedule and phone rejected (6.6422ms)
+  ✔ AVL-03 whole-day blocking is atomic (8.751413ms)
+  ✔ PAY-01 image metadata accepted only in own booking folder (6.747066ms)
+  ✔ PAY-02 filename without stored proof is rejected (1.373327ms)
+  ✔ PAY-03 wrong path rejected and real path linked to exact booking (12.913389ms)
+  ✔ PAY-04 proof private to owner and administrator, immutable to customer (9.995833ms)
+  ✔ PAY-05 verified completed booking creates one linked receipt (9.727082ms)
+  ✔ SEC-05 customer cannot revert a verified payment (2.084819ms)
+  ✔ SEC-06 receipt private to owner and raw availability metadata hidden (3.710515ms)
+  ✔ REC-01 restore a database snapshot and reconcile linked records (1015.902078ms)
+✔ DB: customer isolation, availability, proof policy and recovery (2761.308221ms)
+Native, GPS-centred pin and manual location tests passed.
+✔ tests/location.test.js (81.062336ms)
+✔ F01 startup loads catalog/settings and restores a session without persisting PII (255.196787ms)
+✔ F02 map save preserves all typed booking details (174.011286ms)
+✔ F03 invalid coordinates cannot close/save the map (84.238017ms)
+✔ F04 zoom preserves pin while map taps move it (42.135698ms)
+✔ F05 failed admin update does not alter booking status (22.851074ms)
+✔ F06 failed payment request does not change saved state (28.8968ms)
+✔ F07 editable service fields remain text in details and catalog (25.213135ms)
+✔ F08 punctuation-only phone is rejected before signup (32.911924ms)
+✔ F09 login email is read-only and ignored by profile editor (32.891894ms)
+✔ F10 add-on reorder and repricing preserve identities (1.599368ms)
+✔ F11 failed logout clears local identity and records (23.081335ms)
+✔ F13 schedule loads occupied slots on initial entry and fails closed (53.656196ms)
+✔ F14 repeated Submit sends one request and preserves retry key (80.158675ms)
+✔ LOC-01 GPS success and denial retain manual fallback (23.147495ms)
+✔ AUTH-01 forged UI admin flag does not reveal management (15.853535ms)
+✔ STATE-01 failed settings save leaves previous values (17.073872ms)
+✔ STATE-02 failed service/profile edits preserve saved records (41.760003ms)
+CSS-derived contrast checks passed: [{"theme":"light","selector":".slot.selected","foreground":"#ffffff","background":"#067575","ratio":5.513},{"theme":"light","selector":".success-mark","foreground":"#ffffff","background":"#087a55","ratio":5.35},{"theme":"light","selector":".btn-primary","foreground":"#ffffff","background":"#067575","ratio":5.513},{"theme":"light","selector":".btn-primary","foreground":"#ffffff","background":"#056776","ratio":6.546},{"theme":"dark","selector":".slot.selected","foreground":"#ffffff","background":"#067575","ratio":5.513},{"theme":"dark","selector":".success-mark","foreground":"#091a22","background":"#74e8b6","ratio":11.806},{"theme":"dark","selector":".btn-primary","foreground":"#031d25","background":"#53ded5","ratio":10.592},{"theme":"dark","selector":".btn-primary","foreground":"#031d25","background":"#43c5dc","ratio":8.504}]
+✔ tests/theme-contrast.test.js (88.304859ms)
+Authentication and booking workflow tests passed.
+✔ tests/workflow.test.js (82.055957ms)
+ℹ tests 40
+ℹ suites 0
+ℹ pass 40
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2911.435809

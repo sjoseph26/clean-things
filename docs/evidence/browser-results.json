@@ -1,0 +1,679 @@
+{
+  "results": [
+    {
+      "name": "home",
+      "width": 360,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "services",
+      "width": 360,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "signin",
+      "width": 360,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "signup",
+      "width": 360,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "schedule",
+      "width": 360,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "map",
+      "width": 360,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "details",
+      "width": 360,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "review",
+      "width": 360,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "success",
+      "width": 360,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "payment",
+      "width": 360,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "bookings",
+      "width": 360,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "admin",
+      "width": 360,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "admin-bookings",
+      "width": 360,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "admin-schedule",
+      "width": 360,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "admin-settings",
+      "width": 360,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "local-mocked-timing",
+      "width": 360,
+      "theme": "light",
+      "homeMs": 124,
+      "submitMs": 110.4
+    },
+    {
+      "name": "home",
+      "width": 360,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "services",
+      "width": 360,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "signin",
+      "width": 360,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "signup",
+      "width": 360,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "schedule",
+      "width": 360,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "map",
+      "width": 360,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "details",
+      "width": 360,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "review",
+      "width": 360,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "success",
+      "width": 360,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "payment",
+      "width": 360,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "bookings",
+      "width": 360,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "admin",
+      "width": 360,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "admin-bookings",
+      "width": 360,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "admin-schedule",
+      "width": 360,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "admin-settings",
+      "width": 360,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "local-mocked-timing",
+      "width": 360,
+      "theme": "dark",
+      "homeMs": 93.7,
+      "submitMs": 125.2
+    },
+    {
+      "name": "home",
+      "width": 393,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "services",
+      "width": 393,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "signin",
+      "width": 393,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "signup",
+      "width": 393,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "schedule",
+      "width": 393,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "map",
+      "width": 393,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "details",
+      "width": 393,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "review",
+      "width": 393,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "success",
+      "width": 393,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "payment",
+      "width": 393,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "bookings",
+      "width": 393,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "admin",
+      "width": 393,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "admin-bookings",
+      "width": 393,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "admin-schedule",
+      "width": 393,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "admin-settings",
+      "width": 393,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "local-mocked-timing",
+      "width": 393,
+      "theme": "light",
+      "homeMs": 103,
+      "submitMs": 123.9
+    },
+    {
+      "name": "home",
+      "width": 393,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "services",
+      "width": 393,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "signin",
+      "width": 393,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "signup",
+      "width": 393,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "schedule",
+      "width": 393,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "map",
+      "width": 393,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "details",
+      "width": 393,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "review",
+      "width": 393,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "success",
+      "width": 393,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "payment",
+      "width": 393,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "bookings",
+      "width": 393,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "admin",
+      "width": 393,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "admin-bookings",
+      "width": 393,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "admin-schedule",
+      "width": 393,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "admin-settings",
+      "width": 393,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "local-mocked-timing",
+      "width": 393,
+      "theme": "dark",
+      "homeMs": 109.8,
+      "submitMs": 115.6
+    },
+    {
+      "name": "home",
+      "width": 412,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "services",
+      "width": 412,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "signin",
+      "width": 412,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "signup",
+      "width": 412,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "schedule",
+      "width": 412,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "map",
+      "width": 412,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "details",
+      "width": 412,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "review",
+      "width": 412,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "success",
+      "width": 412,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "payment",
+      "width": 412,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "bookings",
+      "width": 412,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "admin",
+      "width": 412,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "admin-bookings",
+      "width": 412,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "admin-schedule",
+      "width": 412,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "admin-settings",
+      "width": 412,
+      "theme": "light",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "local-mocked-timing",
+      "width": 412,
+      "theme": "light",
+      "homeMs": 129.7,
+      "submitMs": 114.9
+    },
+    {
+      "name": "home",
+      "width": 412,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "services",
+      "width": 412,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "signin",
+      "width": 412,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "signup",
+      "width": 412,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "schedule",
+      "width": 412,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "map",
+      "width": 412,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "details",
+      "width": 412,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "review",
+      "width": 412,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "success",
+      "width": 412,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "payment",
+      "width": 412,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "bookings",
+      "width": 412,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "admin",
+      "width": 412,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "admin-bookings",
+      "width": 412,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "admin-schedule",
+      "width": 412,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "admin-settings",
+      "width": 412,
+      "theme": "dark",
+      "horizontalOverflow": false,
+      "axeViolations": 0
+    },
+    {
+      "name": "local-mocked-timing",
+      "width": 412,
+      "theme": "dark",
+      "homeMs": 82.2,
+      "submitMs": 106.7
+    }
+  ],
+  "violations": [],
+  "runtimeErrors": [],
+  "note": "Chromium with mocked remote responses and simulated GPS; not live/device certification."
+}

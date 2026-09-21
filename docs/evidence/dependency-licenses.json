@@ -1,0 +1,26 @@
+[
+  {
+    "package": "playwright",
+    "version": "1.55.1",
+    "license": "Apache-2.0",
+    "testDependencyOnly": true
+  },
+  {
+    "package": "jsdom",
+    "version": "30.0.1",
+    "license": "MIT",
+    "testDependencyOnly": true
+  },
+  {
+    "package": "axe-core",
+    "version": "4.10.3",
+    "license": "MPL-2.0",
+    "testDependencyOnly": true
+  },
+  {
+    "package": "@electric-sql/pglite",
+    "version": "0.3.14",
+    "license": "Apache-2.0",
+    "testDependencyOnly": true
+  }
+]

@@ -1,0 +1,6 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> clean-things@0.6.0 test:browser
+> node tests/browser.test.cjs
+
+96 browser state/timing results; zero selected-rule accessibility violations.
