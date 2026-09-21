@@ -1,0 +1,21 @@
+{
+  "name": "clean-things",
+  "version": "0.6.0",
+  "private": true,
+  "description": "Clean Things Android booking prototype and verification suite",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "test": "node --test tests/core.test.js tests/backend.test.js tests/regression.test.cjs tests/database.test.cjs tests/theme-contrast.test.js tests/location.test.js tests/workflow.test.js",
+    "test:browser": "node tests/browser.test.cjs",
+    "check": "python3 scripts/check_source_package.py",
+    "serve": "python3 -m http.server 8080 --bind 127.0.0.1 --directory app/src/main/assets"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.3.14",
+    "axe-core": "4.10.3",
+    "jsdom": "30.0.1",
+    "playwright": "1.55.1"
+  }
+}
