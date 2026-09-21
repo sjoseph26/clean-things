@@ -37,10 +37,13 @@ jobs:
           distribution: temurin
           java-version: '17'
       - run: python3 scripts/configure.py --demo
-      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.1'
+      - name: Install Android SDK packages
+        run: |
+          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" 'platforms;android-35' 'build-tools;35.0.1'
       - run: bash build-apk.sh qa
       - uses: actions/upload-artifact@v4
         with:
           name: CleanThings-QA-v0.6.0
           path: dist/CleanThings-qa-v0.6.0.apk
-
