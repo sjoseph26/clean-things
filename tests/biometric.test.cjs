@@ -42,8 +42,9 @@ test('BIO-06 opt-in, encrypted token updates, manual lock, unlock and verified o
 test('BIO-07 actual Java envelope authenticates wrapping, payload, key identity and refreshed data',()=>{
  const out=fs.mkdtempSync(path.join(os.tmpdir(),'ct-biometric-'));
  try {
-  const compile=spawnSync('java',['-m','jdk.compiler/com.sun.tools.javac.Main','-d',out,'app/src/main/java/gy/cleanthings/app/SessionCipher.java','app/src/main/java/gy/cleanthings/app/BiometricEnvelope.java','tests/java/BiometricEnvelopeTest.java'],{encoding:'utf8'});assert.equal(compile.status,0,compile.stderr);
+  const compile=spawnSync('java',['-m','jdk.compiler/com.sun.tools.javac.Main','-d',out,'app/src/main/java/gy/cleanthings/app/SessionCipher.java','app/src/main/java/gy/cleanthings/app/BiometricEnvelope.java','tests/java/BiometricEnvelopeTest.java','tests/java/BiometricAuthOrderTest.java'],{encoding:'utf8'});assert.equal(compile.status,0,compile.stderr);
   const run=spawnSync('java',['-cp',out,'gy.cleanthings.app.BiometricEnvelopeTest'],{encoding:'utf8'});assert.equal(run.status,0,run.stderr);assert.match(run.stdout,/passed/);
+  const order=spawnSync('java',['-cp',out,'gy.cleanthings.app.BiometricAuthOrderTest'],{encoding:'utf8'});assert.equal(order.status,0,order.stderr);assert.match(order.stdout,/regression reproduced/);
  }finally{fs.rmSync(out,{recursive:true,force:true})}
 });
 test('BIO-08 source contracts require auth-per-use strong biometrics and retire background sessions',()=>{
@@ -68,4 +69,13 @@ test('BIO-10 native enrolment waits for in-flight token rotation and protected r
  finishRefresh();await tick();assert.equal(h.pending.action,'enable');assert.match(h.saved,/rotated/);await initial;
  const before=requests;const blocked=api.listProfiles();await tick();assert.equal(requests,before);
  h.complete();await enabling;await blocked;assert.equal(requests,before+1);
+});
+
+test('BIO-11 prompt preparation never performs authenticated AAD; diagnostics contain only fixed stage codes',()=>{
+ const vault=fs.readFileSync('app/src/main/java/gy/cleanthings/app/SessionVault.java','utf8');
+ const start=vault.indexOf('private synchronized void startBiometric');const callback=vault.indexOf('@Override public void onAuthenticationSucceeded',start);
+ const preparation=vault.slice(start,callback);
+ assert.doesNotMatch(preparation,/\.updateAAD\s*\(|\.doFinal\s*\(/);
+ assert.match(vault.slice(callback),/BiometricEnvelope.create\(cipher/);assert.match(vault.slice(callback),/BiometricEnvelope.unwrap\(cipher/);
+ assert.match(vault,/BIO-.*stage/);assert.doesNotMatch(vault,/error\.getMessage\(|printStackTrace|Log\.[dew]/);
 });

@@ -1,4 +1,4 @@
-# Release status - v0.6.5 - 29 September 2026
+# Release status - v0.6.6 - 29 September 2026
 
 **Candidate for controlled testing. Not a production-readiness sign-off.** The current source repairs the reproduced v0.5.5 defects and includes a compiled native build path. See [recorded evidence](evidence/README.md) for executed results and boundaries.
 
@@ -6,7 +6,7 @@
 
 The large refresh button has been removed. Live browsing screens now support a deliberate downward swipe from the top, with a compact loading indicator. Short, horizontal and cancelled gestures do not refresh. Forms, modal dialogs, nested scroll areas and overlapping requests are protected. A keyboard/screen-reader action remains available.
 
-Android version code is 17. Real-phone gesture and upgrade checks remain outstanding. Earlier evidence under `docs/evidence` records previous builds; see the new pull-to-refresh tests for this change.
+Android version code is 18. Real-phone gesture and upgrade checks remain outstanding. Earlier evidence under `docs/evidence` records previous builds; see the new pull-to-refresh tests for this change.
 
 ## Completed in this repair
 
@@ -84,3 +84,11 @@ Implemented on `feature/biometric-unlock`, based on the staged administrator MFA
 Verification: 111 automated tests passed. These execute the real Java AES envelope and simulated JS/native/provider flows, plus static Android boundary contracts. Java/D8 compilation and final APK v2/v3 signature verification passed. Packaged assets match tested source, and the original signing certificate is retained. Real device recognition, Keystore invalidation, background behaviour and upgrade/file-picker flows remain unverified; see [device acceptance](BIOMETRIC-UNLOCK.md). All 141 Chromium state/timing results passed across three phone widths and both themes, with zero selected-rule accessibility violations or runtime errors. Biometric prompts and remote responses were simulated.
 
 Artifact: `CleanThings-Live-v0.6.5.apk`; package `gy.cleanthings.app`, Android code 17. SHA-256: `82a3e3b3b164adcb5342f4222aaeaa26e252e4fd4c09c12b550ed72a66e6d3fa`. This is a feature-test build. No live database/auth configuration changes were made. Because it includes staged MFA, administrator access still awaits coordinated server activation; Randy should keep the existing tester build.
+
+## v0.6.6 biometric setup hotfix
+
+The reporting phone showed a generic storage error when enabling biometrics in v0.6.5. A source defect submitted AAD to an auth-per-use Keystore operation before biometric authentication. The hotfix defers this operation until authentication succeeds, retaining the same encryption/authentication strength and envelope layout. Fixed BIO-* stage codes provide safe troubleshooting if the phone still fails. A host auth-gated CipherSpi reproduces the old sequence's cached failure and validates the corrected sequence. The precise phone exception was unavailable, so actual resolution remains pending a device retry.
+
+112 automated tests passed; Java/D8 compilation and final APK v2/v3 signing passed. Packaged assets match source. The unchanged browser UI retains v0.6.5's 141-result evidence; it was not rerun for this native-only change. No real biometric device, server auth settings or live database was accessed. Staged administrator MFA remains inactive.
+
+Artifact: `CleanThings-Live-v0.6.6.apk`; package `gy.cleanthings.app`, code 18; SHA-256 `24b2c6f25624ac9746b61a63edaf6e09873eaee1f0646080e687d8327dddc39e`. Original signing certificate retained. Install over v0.6.5 for the reporting phone's retry; this supersedes v0.6.5 as the biometric feature candidate. Randy's baseline and main remain unchanged.

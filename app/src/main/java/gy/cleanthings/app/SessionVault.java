@@ -182,7 +182,8 @@ public final class SessionVault {
             final Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
             if (enabling) cipher.init(Cipher.ENCRYPT_MODE, generateKey(BIO_ALIAS, true));
             else cipher.init(Cipher.DECRYPT_MODE, (SecretKey) keyStore().getKey(BIO_ALIAS, null), new GCMParameterSpec(128, BiometricEnvelope.iv(data)));
-            cipher.updateAAD(BiometricEnvelope.AAD);
+            // Init only: authenticated Keystore operations (including AAD) must wait
+            // for onAuthenticationSucceeded, using this exact CryptoObject.
             BiometricPrompt prompt = new BiometricPrompt.Builder(activity).setTitle(enabling ? "Enable biometric unlock" : "Verify to continue")
                 .setSubtitle("Clean Things saved sign-in").setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
                 .setNegativeButton("Cancel", activity.getMainExecutor(), (dialog, which) -> finish(id, expected, failure("cancelled", "Verification cancelled. Your saved sign-in is unchanged."))).build();
@@ -193,28 +194,43 @@ public final class SessionVault {
                 @Override public void onAuthenticationSucceeded(BiometricPrompt.AuthenticationResult result) {
                     synchronized (SessionVault.this) {
                         if (!trustedDocument || expected != generation || cancellation == null) return;
+                        String stage = "PROOF";
                         try {
                             if (result.getCryptoObject() == null || result.getCryptoObject().getCipher() != cipher) throw new IllegalStateException("Missing crypto proof");
                             if (enabling) {
+                                stage = "READ";
                                 String value = plain(data);
+                                stage = "KEY";
                                 KeyGenerator generator = KeyGenerator.getInstance("AES"); generator.init(256);
                                 SecretKey fresh = generator.generateKey();
-                                persist(BiometricEnvelope.create(cipher, fresh, value.getBytes(StandardCharsets.UTF_8)));
+                                stage = "WRAP";
+                                byte[] encrypted = BiometricEnvelope.create(cipher, fresh, value.getBytes(StandardCharsets.UTF_8));
+                                stage = "SAVE";
+                                persist(encrypted);
                                 // Even a leftover legacy ciphertext can no longer be decrypted.
+                                stage = "CLEANUP";
                                 keyStore().deleteEntry(KEY_ALIAS); unlockedKey = fresh;
                             } else {
+                                stage = "UNWRAP";
                                 SecretKey restored = BiometricEnvelope.unwrap(cipher, data);
+                                stage = "READ";
                                 byte[] plaintext = BiometricEnvelope.decrypt(restored, data);
                                 try {
                                     validate(new String(plaintext, StandardCharsets.UTF_8));
                                     if ("disable".equals(action)) {
+                                        stage = "SAVE";
                                         persist(SessionCipher.encrypt(key(true), plaintext));
+                                        stage = "CLEANUP";
                                         keyStore().deleteEntry(BIO_ALIAS); unlockedKey = null;
                                     } else unlockedKey = restored;
                                 } finally { Arrays.fill(plaintext, (byte) 0); }
                             }
                             finish(id, expected, success(null));
-                        } catch (Exception error) { unlockedKey = null; finish(id, expected, failure()); }
+                        } catch (Exception error) {
+                            unlockedKey = null;
+                            // Fixed stage codes are safe to share; never expose provider messages or token data.
+                            finish(id, expected, failure("biometric-operation", "Biometric verification could not finish (BIO-" + stage + "). Try again or use password sign-in."));
+                        }
                     }
                 }
             });

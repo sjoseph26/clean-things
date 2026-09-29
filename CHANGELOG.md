@@ -1,5 +1,13 @@
 # Change log
 
+## 0.6.6 biometric hotfix — 29 September 2026
+
+- Defer authenticated AES-GCM additional-data processing until Android reports biometric success. Doing this before the prompt can cache an unauthenticated-key failure and break setup or unlock even after recognition succeeds.
+- Keep the same authenticated envelope format and strong auth-per-operation requirement; existing successfully enrolled sessions remain compatible.
+- Add safe BIO-* stage codes for troubleshooting without exposing tokens or provider exception messages.
+- Add an auth-gated cipher regression fixture that reproduces the old ordering failure and verifies post-auth wrap/unwrap and unauthenticated denial. Android code 18.
+- Supersedes the v0.6.5 biometric test APK; real-phone retry is still needed.
+
 ## 0.6.5 biometric feature candidate — 29 September 2026
 
 - Opt in to secure fingerprint or supported face unlock from Account → Sign-in protection on Android 11+.

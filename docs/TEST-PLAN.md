@@ -1,4 +1,4 @@
-# Test plan and evidence index - v0.6.5
+# Test plan and evidence index - v0.6.6
 
 Run from the repository root with generated demo configuration and `npm ci`. All automated test data is fictional. Exact command, result and source hashes are recorded in [the evidence summary](evidence/README.md). A passing local result does not imply a deployed result.
 
@@ -77,3 +77,7 @@ The browser suite exercises new-admin enrolment and returning-admin challenge, w
 `BIO-01..06` exercise the JS/native contract: locked plaintext migration denial, callback correlation, forged-success denial, cancellation/retry, password fallback, duplicate requests, enable/refresh/lock/disable. `BIO-07` executes the actual Java envelope with a JVM AES provider and checks modified headers/payloads, wrong keys, truncation and token rotation. `BIO-08` is a static Android boundary contract, not proof of runtime hardware behaviour. `BIO-09..10` cover backend logout and serialization with refresh/requests. `BIO-UI-01..06` exercise bootstrap/back navigation gating, cancellation/duplicates, mandatory server MFA after unlock, fallback races, network-failure retry and the successful customer account route.
 
 Browser tests simulate the native adapter in six viewport/theme combinations and inspect locked, cancelled, enabled and disabled screens, plus enable/lock/password actions. Hardware recognition, key invalidation and real lifecycle tests remain in [BIOMETRIC-UNLOCK.md](BIOMETRIC-UNLOCK.md).
+
+## v0.6.6 hotfix evidence
+
+112 automated tests passed. `BIO-07` additionally runs `BiometricAuthOrderTest`: pre-auth AAD poisons the test operation even if approval follows; post-auth wrap and unwrap succeed; unauthenticated operations fail. `BIO-11` asserts native prompt preparation has no AAD/finalization operations and that diagnostic messages expose no raw exceptions. These are host simulations, not device certification. Browser JavaScript/CSS/HTML are unchanged from v0.6.5's 141-result browser run; that evidence is carried forward without rerunning the unchanged UI. Repeat enable/restart/unlock on the reporting phone using v0.6.6.

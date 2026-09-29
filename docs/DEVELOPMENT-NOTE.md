@@ -1,4 +1,4 @@
-# Technical design - v0.6.5
+# Technical design - v0.6.6
 
 ## Components and boundaries
 
@@ -74,3 +74,7 @@ The standalone SQL migration tightens the existing `is_admin()` dependency share
 The session adapter distinguishes a locked session from corrupt storage, drops leftover plaintext, correlates fixed native events, and requires native status plus a readable native session after success. Backend token rotation and prompts serialize; logout invalidates outstanding operations. The UI gate runs before bootstrap/profile/business reads; unlock then uses the existing `activateAccount` and MFA flow. `MainActivity` retires its bridge and recreates the document after a 60-second background gap. Screenshots are disabled while the native envelope is biometric-protected.
 
 See [device acceptance and limitations](BIOMETRIC-UNLOCK.md). Native API usage was checked against Android's [biometric guide](https://developer.android.com/identity/sign-in/biometric-auth) and [Keystore key parameters](https://developer.android.com/reference/android/security/keystore/KeyGenParameterSpec.Builder).
+
+## Android authenticated-operation ordering hotfix (v0.6.6)
+
+Cipher initialization remains before `BiometricPrompt.authenticate` so Android can authorise that exact operation. `updateAAD` and `doFinal` occur only inside `BiometricEnvelope.create/unwrap` after the successful CryptoObject identity check. AAD is submitted exactly once, retaining the v1 envelope layout. The IV is captured before finalization. Android's [Keystore cipher implementation](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/main/keystore/java/android/security/keystore2/AndroidKeyStoreCipherSpiBase.java) can cache AAD-operation errors and raise them at `doFinal`; JVM software-only round trips did not exercise this auth boundary. `BiometricAuthOrderTest` now models that behaviour with real AES-GCM behind a gated CipherSpi, and `BIO-11` checks the native preparation boundary. Safe fixed stage codes distinguish proof/read/key/wrap/save/cleanup failures without returning raw exception messages.

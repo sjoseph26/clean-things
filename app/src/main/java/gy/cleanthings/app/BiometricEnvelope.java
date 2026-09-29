@@ -24,6 +24,9 @@ final class BiometricEnvelope {
     }
     static SecretKey unwrap(Cipher cipher, byte[] data) throws GeneralSecurityException {
         validate(data);
+        // Called only after Android authenticates the CryptoObject. updateAAD is
+        // a real Keystore operation and can poison the cipher if attempted earlier.
+        cipher.updateAAD(AAD);
         byte[] raw = cipher.doFinal(data, 16, 48);
         try {
             if (raw.length != 32) throw new GeneralSecurityException("Invalid key");
@@ -31,13 +34,17 @@ final class BiometricEnvelope {
         } finally { Arrays.fill(raw, (byte) 0); }
     }
     static byte[] create(Cipher cipher, SecretKey key, byte[] plaintext) throws GeneralSecurityException {
+        // Authentication must precede both AAD and payload processing.
+        cipher.updateAAD(AAD);
+        byte[] iv = cipher.getIV();
+        if (iv == null || iv.length != 12) throw new GeneralSecurityException("Invalid wrapping IV");
         byte[] raw = key.getEncoded();
         byte[] wrapped;
         try { wrapped = cipher.doFinal(raw); } finally { Arrays.fill(raw, (byte) 0); }
-        if (cipher.getIV().length != 12 || wrapped.length != 48) throw new GeneralSecurityException("Invalid wrapping cipher");
+        if (wrapped.length != 48) throw new GeneralSecurityException("Invalid wrapping cipher");
         byte[] header = new byte[HEADER];
         System.arraycopy(MAGIC, 0, header, 0, 4);
-        System.arraycopy(cipher.getIV(), 0, header, 4, 12);
+        System.arraycopy(iv, 0, header, 4, 12);
         System.arraycopy(wrapped, 0, header, 16, 48);
         return combine(header, SessionCipher.encrypt(key, plaintext));
     }

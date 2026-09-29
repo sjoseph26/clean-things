@@ -1,4 +1,4 @@
-# Deployment and recovery guide - v0.6.5
+# Deployment and recovery guide - v0.6.6
 
 This guide describes the prepared candidate. No production database change or GitHub publication was performed during this repair.
 
@@ -65,3 +65,7 @@ Read [the MFA rollout guide](ADMIN-MFA-ROLLOUT.md) before using this candidate f
 ## v0.6.5 biometric candidate
 
 No extra SQL migration or server setting is needed for device biometric unlock. It is optional per saved account/device, requires Android 11+ and an enrolled Class 3 biometric, and must pass [real-phone acceptance](BIOMETRIC-UNLOCK.md). This build includes v0.6.4's staged administrator MFA requirement: admins remain blocked until its separate coordinated server activation. Keep Randy on the existing tester build meanwhile.
+
+### v0.6.6 biometric hotfix
+
+Use v0.6.6 for the next phone retry, installed as an update over v0.6.5. It corrects authenticated-key operation ordering and adds safe troubleshooting codes. No server migration or live activation is part of this hotfix. The staged administrator MFA restriction remains in place.

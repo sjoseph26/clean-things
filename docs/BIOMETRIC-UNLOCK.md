@@ -1,6 +1,12 @@
-# Biometric unlock — v0.6.5 feature candidate
+# Biometric unlock — v0.6.6 feature candidate
 
 Status: implemented, compiled and tested with JVM/JavaScript/browser fixtures. **Real Android biometric and lifecycle acceptance is still required.** No live database or auth configuration was changed. The feature branch builds on administrator MFA, which is still awaiting its coordinated server rollout.
+
+## v0.6.6 retry after the phone report
+
+The v0.6.5 phone screenshot reported “Secure sign-in storage is unavailable” while enabling biometrics. Source review found AAD was sent to an auth-per-use Keystore operation before biometric approval. Android can cache that failure and surface it later during finalization. The hotfix moves AAD into authenticated envelope creation/unwrapping, which run only in the success callback. A host fixture reproduces this ordering failure; no device exception log was available, so a real-phone retry remains necessary to confirm the reported failure is resolved.
+
+Install v0.6.6 as an update over v0.6.5, reopen Account → Sign-in protection and try Enable biometric unlock again. No uninstall or data reset is required for the update. If it fails, record the fixed BIO-* stage code now shown and the phone/Android version. Do not share sign-in credentials or biometric data.
 
 ## User flow
 

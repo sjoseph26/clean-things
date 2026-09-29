@@ -12,7 +12,7 @@ public final class BiometricEnvelopeTest {
         Cipher c = Cipher.getInstance("AES/GCM/NoPadding");
         if (data == null) c.init(Cipher.ENCRYPT_MODE, key);
         else c.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(128, BiometricEnvelope.iv(data)));
-        c.updateAAD(BiometricEnvelope.AAD); return c;
+        return c;
     }
     private static void rejects(SecretKey wrappingKey, byte[] data) throws Exception {
         try {
