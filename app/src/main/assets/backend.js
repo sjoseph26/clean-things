@@ -106,6 +106,7 @@
   }
 
   async function refreshSessionIfNeeded(force) {
+    if (mfaVerification && mfaGeneration === sessionGeneration) { await mfaVerification; return session(); }
     const active = session();
     if (!active || !active.refresh_token) return active;
     const expiresAt = Number(active.expires_at || 0);
@@ -168,6 +169,7 @@
   }
 
   async function signUp(profile, password) {
+    const generation = ++sessionGeneration;
     const response = await request("/auth/v1/signup", {
       method: "POST",
       skipRefresh: true,
@@ -177,6 +179,7 @@
         data: { name: profile.name, phone: profile.phone }
       })
     });
+    if (generation !== sessionGeneration) throw new Error("Account creation was cancelled.");
     // With email confirmation enabled, GoTrue may return the pending user
     // directly instead of wrapping it in { user: ... }. Normalise both valid
     // response formats so a successful registration is not shown as a failure.
@@ -195,6 +198,95 @@
     try {
       if (active) await request("/auth/v1/logout?scope=local", { method: "POST", skipRefresh: true, headers: { Authorization: "Bearer " + active.access_token } });
     } finally { if (storageError) throw storageError; }
+  }
+
+  async function adminMfaStatus() {
+    try {
+      const result = await request("/rest/v1/rpc/admin_mfa_status", { method: "POST", body: "{}" });
+      if (!result || result.enforced !== true || typeof result.required !== "boolean" || typeof result.verified !== "boolean") throw new Error("Administrator security could not be checked. Try again.");
+      return result;
+    } catch (error) {
+      if (error.code === "PGRST202" || error.status === 404) {
+        throw new Error("Two-step verification is awaiting server activation. Contact the app owner, or use the current tester build until rollout is ready.");
+      }
+      throw error;
+    }
+  }
+
+  async function listMfaFactors() {
+    const generation = sessionGeneration;
+    const user = await request("/auth/v1/user");
+    if (generation !== sessionGeneration || !session() || user.id !== session().user.id) throw new Error("Your session changed. Sign in again.");
+    return (user.factors || []).filter(function (factor) { return factor.factor_type === "totp"; });
+  }
+
+  async function mfaRequest(path, options) {
+    const remaining = authRetrySeconds("mfa");
+    if (remaining) throw retryError(remaining);
+    try { return await request(path, options); }
+    catch (error) {
+      if (error.status === 429) { setAuthRetry("mfa", error.retryAfterSeconds || 60); throw retryError(authRetrySeconds("mfa")); }
+      throw error;
+    }
+  }
+
+  async function enrollMfa() {
+    const generation = sessionGeneration;
+    const status = await adminMfaStatus();
+    const factors = await listMfaFactors();
+    if (generation !== sessionGeneration) throw new Error("Your session changed. Sign in again.");
+    if (!status.required || (factors.some(function (factor) { return factor.status === "verified"; }) && !status.verified)) throw new Error("Verify an existing authenticator before adding another.");
+    const result = await mfaRequest("/auth/v1/factors", { method: "POST", body: JSON.stringify({factor_type:"totp", issuer:"Clean Things", friendly_name:"Clean Things " + new Date().toISOString()}) });
+    if (generation !== sessionGeneration) throw new Error("Your session changed. Sign in again.");
+    if (!result || !result.id || !result.totp || !result.totp.secret || !result.totp.qr_code) throw new Error("Authenticator setup could not be loaded. Try again.");
+    return result;
+  }
+
+  async function cancelMfaEnrollment(factorId) {
+    const generation = sessionGeneration;
+    const factors = await listMfaFactors();
+    const factor = factors.find(function (item) { return item.id === factorId; });
+    if (generation !== sessionGeneration) throw new Error("Your session changed. Sign in again.");
+    if (!factor) return;
+    if (factor.status !== "unverified") throw new Error("This authenticator is already active. Recheck your sign-in instead.");
+    await mfaRequest("/auth/v1/factors/" + encodeURIComponent(factorId), { method: "DELETE" });
+  }
+
+  let mfaVerification = null;
+  let mfaGeneration = -1;
+  async function verifyMfa(factorId, code) {
+    if (!/^[0-9]{6}$/.test(String(code))) throw new Error("Enter the six-digit code from your authenticator app.");
+    if (!/^[0-9a-f-]{36}$/i.test(String(factorId))) throw new Error("Choose an authenticator and try again.");
+    const remaining = authRetrySeconds("mfa");
+    if (remaining) throw retryError(remaining);
+    if (mfaVerification && mfaGeneration === sessionGeneration) throw new Error("Verification is already in progress.");
+    const generation = sessionGeneration;
+    await refreshSessionIfNeeded();
+    if (generation !== sessionGeneration || !session()) throw new Error("Your session ended. Sign in again.");
+    if (mfaVerification && mfaGeneration === generation) throw new Error("Verification is already in progress.");
+    const active = session();
+    const headers = {apikey:config.supabasePublishableKey, Authorization:"Bearer " + active.access_token, "Content-Type":"application/json"};
+    const url = config.supabaseUrl.replace(/\/$/, "") + "/auth/v1/factors/" + encodeURIComponent(factorId);
+    mfaGeneration = generation;
+    const pending = (async function () {
+      try {
+        const challenge = await fetchPayload(url + "/challenge", {method:"POST", headers:headers, body:"{}"});
+        if (generation !== sessionGeneration) throw new Error("Your session changed. Sign in again.");
+        if (!challenge || !challenge.id) throw new Error("Verification could not start. Try again.");
+        const verified = await fetchPayload(url + "/verify", {method:"POST", headers:headers, body:JSON.stringify({challenge_id:challenge.id, code:String(code)})});
+        if (generation !== sessionGeneration) throw new Error("Your session changed. Sign in again.");
+        if (!verified || !verified.access_token || !verified.refresh_token || !verified.user || verified.user.id !== active.user.id) throw new Error("Verification returned an invalid session. Sign in again.");
+        if (!verified.expires_at) verified.expires_at = Math.floor(Date.now() / 1000) + Number(verified.expires_in || 0);
+        saveSession(verified);
+        return true;
+      } catch (error) {
+        if (error.status === 429) { setAuthRetry("mfa", error.retryAfterSeconds || 60); throw retryError(authRetrySeconds("mfa")); }
+        if (["mfa_verification_failed", "mfa_challenge_expired", "mfa_verification_rejected"].includes(error.code)) throw new Error("That code was not accepted. Use the latest code and check that your phone time is automatic.");
+        throw error;
+      }
+    })().finally(function () { if (mfaVerification === pending) mfaVerification = null; });
+    mfaVerification = pending;
+    return pending;
   }
 
   async function getMyProfile() {
@@ -427,6 +519,11 @@
     authRetrySeconds: authRetrySeconds,
     session: session,
     sessionStorageStatus: function () { return sessionStore.status(); },
+    adminMfaStatus: adminMfaStatus,
+    listMfaFactors: listMfaFactors,
+    enrollMfa: enrollMfa,
+    cancelMfaEnrollment: cancelMfaEnrollment,
+    verifyMfa: verifyMfa,
     signIn: signIn,
     signUp: signUp,
     signOut: signOut,

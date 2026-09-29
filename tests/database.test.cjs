@@ -11,6 +11,8 @@ test('DB: customer isolation, availability, proof policy and recovery', async t 
     create schema auth; create schema storage; create schema extensions; create schema vault; create schema net;
     create table auth.users(id uuid primary key, email text, raw_user_meta_data jsonb default '{}');
     create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+    create function auth.jwt() returns jsonb language sql stable as $$ select jsonb_build_object('aal',current_setting('request.jwt.claim.aal',true)) $$;
+    create table auth.mfa_factors(id uuid default gen_random_uuid(),user_id uuid,factor_type text,status text);
     grant usage on schema auth,storage to authenticated,anon;
     create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
     create table storage.objects(id uuid default gen_random_uuid(),bucket_id text,name text,primary key(bucket_id,name));
@@ -31,9 +33,10 @@ test('DB: customer isolation, availability, proof policy and recovery', async t 
   const A='11111111-1111-4111-8111-111111111111', B='22222222-2222-4222-8222-222222222222', ADMIN='33333333-3333-4333-8333-333333333333';
   await db.query(`insert into auth.users(id,email) values($1,'a@example.test'),($2,'b@example.test'),($3,'admin@example.test')`,[A,B,ADMIN]);
   await db.query(`update public.profiles set role='admin' where user_id=$1`,[ADMIN]);
+  await db.query("insert into auth.mfa_factors(user_id,factor_type,status) values($1,'totp','verified')",[ADMIN]);
   const date=(await db.query(`select ((now() at time zone 'America/Guyana')::date + 2)::text as d`)).rows[0].d;
   const base={serviceId:'essential',serviceMode:'bay',date,time:'08:30',name:'Fixture A',phone:'5926000000',vehicle:'Test car',plate:'TEST',addOns:[],requestId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'};
-  const role=async(id)=>{await db.exec('reset role');await db.query(`select set_config('request.jwt.claim.sub',$1,false)`,[id||'']);await db.exec(`set role ${id?'authenticated':'anon'}`);};
+  const role=async(id)=>{await db.exec('reset role');await db.query(`select set_config('request.jwt.claim.sub',$1,false)`,[id||'']);await db.query(`select set_config('request.jwt.claim.aal',$1,false)`,[id===ADMIN?'aal2':'aal1']);await db.exec(`set role ${id?'authenticated':'anon'}`);};
   const create=(draft)=>db.query('select (public.create_booking($1::jsonb)).*',[JSON.stringify(draft)]);
   const update=(input)=>db.query('select (public.update_my_booking($1::jsonb)).*',[JSON.stringify(input)]);
   let booking;

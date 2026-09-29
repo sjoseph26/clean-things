@@ -1,4 +1,4 @@
-# Test plan and evidence index - v0.6.3
+# Test plan and evidence index - v0.6.4
 
 Run from the repository root with generated demo configuration and `npm ci`. All automated test data is fictional. Exact command, result and source hashes are recorded in [the evidence summary](evidence/README.md). A passing local result does not imply a deployed result.
 
@@ -65,3 +65,9 @@ Phone acceptance: install v0.6.2 over the existing app; sign in as admin, backgr
 `STORE-01..09`: migration ordering, encrypted-session precedence, failed migration, missing bridge/corrupt storage, failed write, logout failures, browser memory-only sessions, malformed legacy data and backend sign-in/refresh/sign-out integration. `STORE-10` compiles and executes the actual Java AES-GCM envelope code with the JVM provider: repeated round trips, unique IVs, tampered header/IV/ciphertext, truncation and wrong-key rejection. `STORE-11` checks native document/frame/no-backup restrictions; `NATIVE-01` verifies packaged HTML dependencies are allowed. These are not Android Keystore instrumentation tests.
 
 On a test phone, upgrade an existing signed-in v0.6.2 installation to v0.6.3, check the account remains usable, force-stop/reopen and verify restoration. Sign out, force-stop/reopen and confirm the account does not restore; sign in again and confirm encrypted persistence resumes. Repeat after access-token renewal and exercise normal bookings/GPS/file selection. Use a disposable test device/account for storage corruption or key-loss checks. Current runtime has no connected Android device or emulator, so those results must be recorded separately.
+
+## v0.6.4 MFA verification
+
+`MFA-API-01..10` cover challenge/verify payloads and token persistence, malformed input, wrong codes, verification throttling, logout/account-switch races, concurrent requests, enrolment gates, transient secrets, guarded cancellation and absent enforcement. `MFA-UI-01..05` cover protected-data gating, blocked rollout state, setup/no-secret-persistence, duplicate submission, wrong codes, logout and required post-verification server authorization. `MFA-DB` runs the staged SQL twice against an older-schema fixture and verifies direct RLS/RPC denials for password-only admins, customers and stale factorless AAL2 sessions. The full database suite also runs the migration with its other real policies.
+
+The browser suite exercises new-admin enrolment and returning-admin challenge, wrong then correct codes, a backup authenticator and the existing booking flows in both themes at three phone widths. Test codes and QR images are fixtures. Run [hosted and phone acceptance](ADMIN-MFA-ROLLOUT.md) before deployment.

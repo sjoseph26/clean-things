@@ -1,4 +1,4 @@
-# Release status - v0.6.3 - 29 September 2026
+# Release status - v0.6.4 - 29 September 2026
 
 **Candidate for controlled testing. Not a production-readiness sign-off.** The current source repairs the reproduced v0.5.5 defects and includes a compiled native build path. See [recorded evidence](evidence/README.md) for executed results and boundaries.
 
@@ -6,7 +6,7 @@
 
 The large refresh button has been removed. Live browsing screens now support a deliberate downward swipe from the top, with a compact loading indicator. Short, horizontal and cancelled gestures do not refresh. Forms, modal dialogs, nested scroll areas and overlapping requests are protected. A keyboard/screen-reader action remains available.
 
-Android version code is 15. Real-phone gesture and upgrade checks remain outstanding. Earlier evidence under `docs/evidence` records previous builds; see the new pull-to-refresh tests for this change.
+Android version code is 16. Real-phone gesture and upgrade checks remain outstanding. Earlier evidence under `docs/evidence` records previous builds; see the new pull-to-refresh tests for this change.
 
 ## Completed in this repair
 
@@ -24,7 +24,7 @@ Android version code is 15. Real-phone gesture and upgrade checks remain outstan
 | Gate | Current evidence | Required next action |
 | --- | --- | --- |
 | GitHub | Private sjoseph26/clean-things published; verification and QA build passed on 29 September | Require passing CI for subsequent changes |
-| Authentication hardening | Live IP throttling configured and HTTP 429 observed; retry/recovery regression tests added | Owner completes password reset, expired/used-link and subsequent sign-in tests; MFA remains future work; v0.6.3 encrypted token storage awaits phone verification |
+| Authentication hardening | Live IP throttling configured and HTTP 429 observed; retry/recovery regression tests added | Owner completes password reset, expired/used-link and subsequent sign-in tests; v0.6.4 MFA awaits coordinated server rollout; encrypted token storage awaits phone verification |
 | Database rollout | Migration tested locally | Back up, apply to staging, run LIVE-01..05 before production |
 | Payment storage | Raw-body browser/adapter and SQL-policy tests | Actual Supabase upload/download/expiry/file-byte restore |
 | Native operation | Compiled and signed APK | Real-phone GPS, chooser and upgrade tests |
@@ -66,3 +66,13 @@ The native bridge exposes only read/write/clear and is restricted to the trusted
 Verification on 29 September 2026: 79 automated tests passed, including actual Java AES-GCM envelope round-trip/tamper/wrong-key tests and native-adapter migration/failure/refresh/logout tests. The JVM provider was used for cryptographic tests, not Android Keystore. All 110 Chromium state/timing results passed with zero selected-rule accessibility violations or runtime errors. Native Java/D8 compilation passed. APK v2/v3 signatures verified against the original certificate, and bundled web assets match the tested source.
 
 Artifact: `CleanThings-Live-v0.6.3.apk`; package `gy.cleanthings.app`, version code 15. SHA-256: `0a5c07d9d5550a9347f8d316ade5c82da39e361b5888ab26b8b1652cdf11d311`. No live database, account or authentication-provider settings were changed. Device upgrade/migration, force-stop restoration, sign-out persistence, key-loss behaviour and hardware backing remain unverified because no Android device/emulator is attached. This build is for feature testing, pending those device checks.
+
+## v0.6.4 administrator MFA feature candidate
+
+Implemented on `feature/admin-mfa`, based on the encrypted-storage branch. Includes authenticator enrolment via QR/manual key, six-digit code verification, backup authenticator selection/enrolment, cancellation of unfinished factors, retry throttling, generation-bound session updates and an independent server authorisation recheck. Setup secrets and codes remain transient. Privileged records are not loaded until verification succeeds. Missing server enforcement is visibly blocked. Existing customer sign-in and ownership rules remain in place.
+
+The staged `202609290002_admin_mfa.sql` transaction requires the protected admin role, a server-validated AAL2 claim and an existing verified TOTP factor in `public.is_admin()`. It adds an authenticated current-account status RPC and reloads the API schema cache. It is independent of the broader repair migration. **It has not been applied to the live database.** No real authenticator was enrolled, verification code used, account changed or live auth setting modified. Main and Randy's v0.6.2 baseline remain unchanged.
+
+Verification: 95 automated tests passed, including direct RLS/RPC enforcement on older-schema and full-migration fixtures, malformed/wrong codes, rate limits, token renewal serialization, logout/account-switch races and UI gates. All 117 Chromium state/timing results passed across three phone widths and both themes, with zero selected-rule accessibility violations or runtime errors. Provider responses and QR data were mocked. Java/D8 native compilation and APK v2/v3 verification passed; packaged assets match source. The original signing certificate is retained.
+
+Artifact: `CleanThings-Live-v0.6.4.apk`; package `gy.cleanthings.app`, Android version code 16. APK SHA-256: `4311bb88d8828b8afd893e952679838a043a02e6f0b765dd3b745264e12778bb`. This is a feature-test candidate, not an activated live MFA release. Staging/provider/phone acceptance and coordinated admin upgrades must precede owner-approved live enforcement. The new app keeps admin management locked until server activation. See [activation and recovery instructions](ADMIN-MFA-ROLLOUT.md).

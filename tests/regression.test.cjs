@@ -16,6 +16,8 @@ async function setup(options={}) {
     listServices:async()=>{calls.push('services');return [service]},
     listPublicSettings:async()=>{calls.push('settings');return [{key:'business_name',value:'Test Business'}]},
     getMyProfile:async()=>{calls.push('profile');return active?{user_id:'user-1',name:'Fixture',phone:'5926000000',email:'a@example.test',role:options.admin?'admin':'customer'}:null},
+    adminMfaStatus:async()=>({enforced:true,required:options.admin,verified:true}),
+    listMfaFactors:async()=>[],
     listBookings:async()=>[],listReceipts:async()=>[],listProfiles:async()=>[],
     listAvailability:async()=>{calls.push('availability');return [{service_time:'10:00',status:'booked'}]},
     signOut:async()=>{active=null;},
@@ -26,7 +28,7 @@ async function setup(options={}) {
   w.eval(fs.readFileSync(root+'pull-refresh.js','utf8'));
   const code=fs.readFileSync(root+'app.js','utf8');
   assert.ok(code.endsWith('})();\n'));
-  w.eval(code.replace('  bootstrapBackend();\n})();',`window.audit={get state(){return state},get ui(){return ui},get services(){return services},render,navigate,bootstrapBackend,openLocationPicker,handleAdminAction,submitPayment,openEditCustomer,openServiceEditor,showServiceDetails,submitCustomerCreate,currentAccount,loadAvailability,activateAccount,logout,submitAdminSettings,openEditProfile,openEditBooking,submitCustomerLogin,refreshAuthControls};window.auditReady=bootstrapBackend();})();`));
+  w.eval(code.replace('  bootstrapBackend();\n})();',`window.audit={get state(){return state},get ui(){return ui},get services(){return services},render,navigate,bootstrapBackend,openLocationPicker,handleAdminAction,submitPayment,openEditCustomer,openServiceEditor,showServiceDetails,submitCustomerCreate,currentAccount,loadAvailability,activateAccount,logout,submitAdminSettings,openEditProfile,openEditBooking,submitCustomerLogin,refreshAuthControls,requireAdminMfa,submitMfa,handleMfaAction};window.auditReady=bootstrapBackend();})();`));
   await w.auditReady;
   return {w,a:w.audit,backend,calls,close:()=>w.close(),setSession:v=>active=v};
 }
@@ -145,5 +147,54 @@ test('BACK-01 native and browser Back close pop-ups without replacing underlying
   assert.equal(t.w.CleanThingsHandleBack(),true);assert.equal(t.w.CleanThingsHandleBack(),false);assert.equal(notes.value,'Unsaved details');
   t.a.showServiceDetails('essential');t.w.dispatchEvent(new t.w.PopStateEvent('popstate',{state:{screen:'home'}}));
   assert.equal(t.a.ui.screen,'booking');assert.equal(t.w.document.getElementById('notes'),notes);assert.equal(t.w.document.querySelector('[role=dialog]'),null);
+ }finally{t.close()}
+});
+
+test('MFA-UI-01 password-only admin sees challenge before any business data is loaded',async()=>{
+ const t=await setup({guest:true,admin:true});try{
+  t.setSession({user:{id:'user-1'}});let protectedReads=0;
+  t.backend.adminMfaStatus=async()=>({enforced:true,required:true,verified:false});
+  t.backend.listMfaFactors=async()=>[{id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',factor_type:'totp',status:'verified',friendly_name:'Primary'}];
+  t.backend.listBookings=t.backend.listProfiles=t.backend.listReceipts=async()=>{protectedReads++;return []};
+  const account=await t.a.activateAccount(await t.backend.getMyProfile());t.a.render();
+  assert.equal(account,null);assert.equal(protectedReads,0);assert.equal(t.a.currentAccount(),null);assert.equal(t.a.ui.screen,'mfa');assert.ok(t.w.document.getElementById('mfa-code'));
+  t.a.navigate('admin');assert.equal(t.a.ui.screen,'mfa');assert.doesNotMatch(t.w.document.getElementById('app-main').textContent,/Business overview/);
+ }finally{t.close()}
+});
+test('MFA-UI-02 server rollout or factor lookup failure keeps admin locked',async()=>{
+ const t=await setup({guest:true,admin:true});try{
+  t.setSession({user:{id:'user-1'}});t.backend.adminMfaStatus=async()=>{throw Error('Awaiting server activation')};
+  assert.equal(await t.a.activateAccount(await t.backend.getMyProfile()),null);t.a.render();assert.match(t.w.document.getElementById('mfa-error').textContent,/server activation/);assert.equal(t.a.currentAccount(),null);
+ }finally{t.close()}
+});
+test('MFA-UI-03 enrolment secrets remain in memory and successful code is followed by server authorization',async()=>{
+ const t=await setup({guest:true,admin:true});try{
+  t.setSession({user:{id:'user-1'}});let verified=false,submissions=0;
+  t.backend.adminMfaStatus=async()=>({enforced:true,required:true,verified});t.backend.listMfaFactors=async()=>[];
+  t.backend.enrollMfa=async()=>({id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',totp:{secret:'FIXTURE-SETUP-KEY',qr_code:'<svg xmlns="http://www.w3.org/2000/svg"></svg>'}});
+  t.backend.verifyMfa=async(id,code)=>{submissions++;assert.equal(code,'123456');verified=true};
+  await t.a.activateAccount(await t.backend.getMyProfile());t.a.render();
+  t.w.document.querySelector('[data-action=mfa-start]').click();await tick();
+  assert.match(t.w.document.querySelector('.mfa-secret').textContent,/FIXTURE/);
+  for(let i=0;i<t.w.localStorage.length;i++)assert.doesNotMatch(t.w.localStorage.getItem(t.w.localStorage.key(i)),/FIXTURE-SETUP-KEY/);
+  assert.equal(t.w.document.querySelector('#app-main svg'),null);
+  const form=t.w.document.getElementById('mfa-form');form.querySelector('input').value='123456';form.dispatchEvent(new t.w.Event('submit',{bubbles:true,cancelable:true}));form.dispatchEvent(new t.w.Event('submit',{bubbles:true,cancelable:true}));await tick();
+  assert.equal(submissions,1);assert.equal(t.a.ui.mfa,null);assert.equal(t.w.document.querySelector('.mfa-secret'),null);assert.equal(t.a.ui.screen,'admin');assert.equal(t.a.currentAccount().role,'admin');
+ }finally{t.close()}
+});
+test('MFA-UI-04 wrong code and logout during verification cannot expose admin records',async()=>{
+ const t=await setup({guest:true,admin:true});try{
+  t.setSession({user:{id:'user-1'}});t.backend.adminMfaStatus=async()=>({enforced:true,required:true,verified:false});t.backend.listMfaFactors=async()=>[{id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',status:'verified'}];
+  await t.a.activateAccount(await t.backend.getMyProfile());t.a.render();t.backend.verifyMfa=async()=>{throw Error('Wrong code')};
+  let form=t.w.document.getElementById('mfa-form');form.querySelector('input').value='123456';await t.a.submitMfa({preventDefault(){},currentTarget:form});assert.match(t.w.document.getElementById('mfa-error').textContent,/Wrong code/);assert.equal(t.a.currentAccount(),null);
+  let release;t.backend.verifyMfa=()=>new Promise(r=>release=r);form=t.w.document.getElementById('mfa-form');form.querySelector('input').value='123456';const pending=t.a.submitMfa({preventDefault(){},currentTarget:form});await t.a.logout();release();await pending;assert.equal(t.a.currentAccount(),null);assert.equal(t.a.ui.mfa,null);assert.equal(t.a.ui.screen,'account');
+ }finally{t.close()}
+});
+
+test('MFA-UI-05 a verification response cannot unlock admin when server authorization still denies it',async()=>{
+ const t=await setup({guest:true,admin:true});try{
+  t.setSession({user:{id:'user-1'}});t.backend.adminMfaStatus=async()=>({enforced:true,required:true,verified:false});t.backend.listMfaFactors=async()=>[{id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',status:'verified'}];
+  await t.a.activateAccount(await t.backend.getMyProfile());t.a.render();t.backend.verifyMfa=async()=>true;
+  const form=t.w.document.getElementById('mfa-form');form.querySelector('input').value='123456';await t.a.submitMfa({preventDefault(){},currentTarget:form});assert.equal(t.a.currentAccount(),null);assert.equal(t.a.ui.screen,'mfa');assert.doesNotMatch(t.w.document.getElementById('app-main').textContent,/Business overview/);
  }finally{t.close()}
 });

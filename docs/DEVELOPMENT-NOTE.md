@@ -1,4 +1,4 @@
-# Technical design - v0.6.3
+# Technical design - v0.6.4
 
 ## Components and boundaries
 
@@ -60,3 +60,9 @@ Add-on fieldsets preserve database JSON structure and IDs, independent of names 
 An existing encrypted session takes precedence over any legacy token. Migration writes the legacy value through the vault before removing localStorage. Failed migration leaves the old copy pending, exposes a warning and returns no active session. Write failures clear runtime identity and attempt native cleanup; they never store new tokens in localStorage. Sign-out attempts both local removal and remote revocation. A key that is lost or ciphertext that cannot authenticate produces a visible failure; fresh sign-in can replace unreadable data. Browser previews use in-memory sessions and require another sign-in after reload.
 
 Reference design guidance: [Android Keystore](https://developer.android.com/privacy-and-security/keystore), [cryptography](https://developer.android.com/privacy-and-security/cryptography), and [native bridge risks](https://developer.android.com/privacy-and-security/risks/insecure-webview-native-bridges). This is encryption at rest, not protection from runtime XSS or a compromised OS. No hardware-backed-key or biometric claim is made without device testing.
+
+## Administrator MFA (v0.6.4)
+
+The account bootstrap checks `admin_mfa_status()` before querying privileged records. A pending-MFA state holds only the current user's profile and transient enrolment/factor metadata, clears admin records and pins navigation to verification. Backend TOTP methods use `/auth/v1/factors`, `/challenge`, `/verify`, and the authoritative `/auth/v1/user` factor list. Verification validates six-digit input, serializes with refresh, preserves leading zeroes, checks login-generation races and saves the newly issued session before the server authorisation recheck. Error paths never infer admin access from a successful-looking client response. Setup uses a QR image/manual key, verified-factor selection and guarded cancellation of unfinished factors.
+
+The standalone SQL migration tightens the existing `is_admin()` dependency shared by RLS and privileged RPCs; it leaves customer ownership policies intact. This is staged deployment work: neither live database enforcement nor actual factor enrolment has been performed. See [the rollout guide](ADMIN-MFA-ROLLOUT.md).

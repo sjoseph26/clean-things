@@ -1,4 +1,4 @@
-# Deployment and recovery guide - v0.6.3
+# Deployment and recovery guide - v0.6.4
 
 This guide describes the prepared candidate. No production database change or GitHub publication was performed during this repair.
 
@@ -36,7 +36,7 @@ For a live update set these variables privately and run `bash build-apk.sh live`
 
 The live build refuses to create a replacement signing key. The original key recovered during this repair matches the v0.5.5 certificate, but is excluded from all source packages and Git. The old prototype uses a development certificate; retain it for prototype upgrade continuity and plan a proper production signing strategy before a public release.
 
-The v0.6.3 live package keeps `gy.cleanthings.app` and increments version code to 15. Its APK signature can be verified with Android `apksigner verify --verbose --print-certs`. Install over the old prototype only after the migration and staging gates pass. Do not uninstall first if you intend to keep the existing installation. Moving bundled content from a file origin to HTTPS means users must sign in again; local file-origin preferences/demo state are not migrated. Shared backend records remain authoritative.
+The v0.6.4 live package keeps `gy.cleanthings.app` and increments version code to 16. Its APK signature can be verified with Android `apksigner verify --verbose --print-certs`. Install over the old prototype only after the migration and staging gates pass. Do not uninstall first if you intend to keep the existing installation. Moving bundled content from a file origin to HTTPS means users must sign in again; local file-origin preferences/demo state are not migrated. Shared backend records remain authoritative.
 
 Test on an actual Android phone: fresh launch, existing install update, sign-in, GPS allow/deny/approximate, file picker and proof upload, dark mode, back navigation, network loss and restart. Building and examining the APK cannot certify these interactions.
 
@@ -57,3 +57,7 @@ Reference: [Supabase Storage access control](https://supabase.com/docs/guides/st
 ## v0.6.3 storage upgrade
 
 This feature candidate migrates the Android saved session to Keystore-backed encrypted storage. No database migration is required for this storage change. Upgrade over the existing app with the same certificate; do not uninstall first. Test sign-in restoration after force-stop, renewal and sign-out before wider distribution. Keep Randy's v0.6.2 tester baseline available while this separate feature candidate is validated. Browser previews now forget sign-in on reload. A failed native migration displays a warning and does not reuse the unsecured token; restart or sign in again. Administrator MFA/biometric enrolment is not included in this build.
+
+## v0.6.4 administrator MFA rollout
+
+Read [the MFA rollout guide](ADMIN-MFA-ROLLOUT.md) before using this candidate for administrators. Its management screens require the staged server enforcement function; they remain locked until that migration is deployed. Coordinate all admin device upgrades and staging/owner acceptance before activating it on production. Randy can continue testing v0.6.2 in the meantime. This build includes the v0.6.3 encrypted-session changes. Customers do not need administrator MFA.

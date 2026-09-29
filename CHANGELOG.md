@@ -1,5 +1,14 @@
 # Change log
 
+## 0.6.4 MFA feature candidate — 29 September 2026
+
+- Add administrator authenticator setup, code verification, backup-factor selection and identity-checked recovery guidance.
+- Hold admin records until the backend confirms MFA authorization; block admin access if server enforcement is missing or cannot be checked.
+- Keep setup secrets/codes transient and save verified sessions through the encrypted Android storage adapter.
+- Add a staged mandatory-MFA `is_admin()` migration and current-account status RPC. Not applied to production while the prior tester build is in use.
+- Cover wrong codes, throttling, concurrent verification, logout/account-switch races, unfinished-factor cancellation and direct RLS/RPC bypass attempts.
+- Android code 16; see `docs/ADMIN-MFA-ROLLOUT.md` before enabling live enforcement.
+
 ## 0.6.3 feature candidate - 29 September 2026
 
 - Save Android sign-in sessions in an AES-256-GCM encrypted file under the no-backup directory, using a non-exportable Android Keystore key.

@@ -85,6 +85,7 @@
     adminSearch: "",
     adminStatus: "All",
     adminMonth: "",
+    mfa: null,
     accountMode: "signin",
     authNotice: "",
     pendingBookingServiceId: null,
@@ -101,6 +102,15 @@
   function refreshAuthControls() {
     clearTimeout(authRetryTimer);
     if (!isLive() || !Backend.authRetrySeconds) return;
+    const mfaForm = document.getElementById("mfa-form");
+    if (mfaForm) {
+      const wait = Backend.authRetrySeconds("mfa");
+      const submit = mfaForm.querySelector('[type="submit"]');
+      submit.disabled = pendingActions.has("mfa") || wait > 0;
+      submit.textContent = wait ? "Try again in " + wait + "s" : "Verify code";
+      if (wait) authRetryTimer = setTimeout(refreshAuthControls, 1000);
+      return;
+    }
     const form = document.getElementById("customer-login-form");
     if (!form) return;
     const login = form.querySelector('[type="submit"]');
@@ -121,6 +131,7 @@
     if (isLive()) { state.accounts = []; state.bookings = []; state.receipts = []; }
     ui.draft = newDraft();
     ui.selectedBookingRef = null;
+    ui.mfa = null;
     saveState();
   }
 
@@ -365,6 +376,8 @@
   async function activateAccount(profile) {
     if (!profile) throw new Error("Your account profile could not be loaded. Please try signing in again.");
     const epoch = authEpoch;
+    if (profile.role === "admin" && !(await requireAdminMfa(profile, false))) return null;
+    if (epoch !== authEpoch) return null;
     const account = await hydrateAvatar(profileToAccount(profile));
     const data = await Promise.all([Backend.listBookings(), Backend.listReceipts(), Backend.listServices(account.role === "admin")]);
     if (epoch !== authEpoch || !Backend.session() || Backend.session().user.id !== account.id) throw new Error("Your session ended. Sign in again.");
@@ -394,6 +407,7 @@
   }
 
   function finishAccountEntry(account) {
+    if (!account) { render(); return; }
     const pendingServiceId = ui.pendingBookingServiceId;
     ui.pendingBookingServiceId = null;
     ui.authNotice = "";
@@ -507,6 +521,7 @@
       routeToAccount(screen === "bookings" ? "Sign in or create an account to view your bookings." : "Sign in or create an account before booking a service.", options.serviceId || "");
       return;
     }
+    if (ui.mfa) screen = "mfa";
     ui.screen = screen;
     if (options.reference) ui.selectedBookingRef = options.reference;
     if (options.serviceId) {
@@ -543,6 +558,7 @@
   }
 
   function renderBottomNav() {
+    if (ui.mfa) { bottomNav.innerHTML = ""; return; }
     if (ui.screen === "admin") {
       bottomNav.classList.add("admin-bottom-nav");
       const adminItems = [
@@ -715,6 +731,97 @@
     return '<div class="card"><h3>Sign-in protection</h3><p>' + Core.safeText(storage.message) + '</p></div>';
   }
 
+  async function requireAdminMfa(profile, backup) {
+    const epoch = authEpoch;
+    try {
+      const status = await Backend.adminMfaStatus();
+      if (epoch !== authEpoch) return false;
+      if (!status.required) throw new Error("Administrator access is no longer assigned to this account.");
+      if (status.verified && !backup) { ui.mfa = null; return true; }
+      const factors = await Backend.listMfaFactors();
+      if (epoch !== authEpoch) return false;
+      const verified = factors.filter(function (factor) { return factor.status === "verified"; });
+      backup = backup && status.verified;
+      ui.mfa = {profile:profile, factors:verified, unfinished:factors.filter(function (factor) { return factor.status === "unverified"; }), enrollment:null,
+        step:backup || !verified.length ? "setup" : "challenge", backup:!!backup, error:""};
+    } catch (error) {
+      if (epoch !== authEpoch) return false;
+      ui.mfa = {profile:profile, factors:[], unfinished:[], enrollment:null, step:"blocked", backup:!!backup, error:error.message};
+    }
+    state.accounts = []; state.bookings = []; state.receipts = [];
+    sessionStorage.removeItem("cleanthings.customer.id"); sessionStorage.removeItem("cleanthings.admin.auth");
+    ui.screen = "mfa";
+    return false;
+  }
+
+  function renderMfa() {
+    const mfa = ui.mfa;
+    if (!mfa || !Backend.session()) return '<div class="page"><p>Sign in to continue.</p><button class="btn btn-primary" data-action="nav" data-screen="account">Sign in</button></div>';
+    let content = '';
+    if (mfa.step === "blocked") content = '<p>Administrator controls stay locked until the security check succeeds.</p><button class="btn btn-primary btn-block" data-action="mfa-recheck">Check again</button>';
+    else if (mfa.step === "setup" && !mfa.enrollment) {
+      content = '<p>' + (mfa.backup ? 'Add a backup authenticator on another device or in a trusted password manager.' : 'Add Clean Things to an authenticator app. You will use a six-digit code after your password to open administrator controls.') + '</p><p class="meta">Keep access to your authenticator. Verifying setup can sign out your other sessions. Each administrator should use their own account.</p><button class="btn btn-primary btn-block" data-action="mfa-start">Set up ' + (mfa.backup ? 'backup ' : '') + 'authenticator</button>';
+      if (mfa.unfinished.length) content += '<div class="info-callout"><p>There are unfinished authenticator setups. Remove only a setup you are no longer completing on another device.</p>' + mfa.unfinished.map(function (factor) { return '<button class="btn btn-ghost btn-block" data-action="mfa-discard" data-factor="' + Core.safeText(factor.id) + '">Remove unfinished ' + Core.safeText(factor.friendly_name || 'setup') + '</button>'; }).join('') + '</div>';
+    } else {
+      if (mfa.enrollment) {
+        const totp = mfa.enrollment.totp;
+        // Render provider SVG as an image, never insert it as executable HTML.
+        const qr = String(totp.qr_code || '');
+        const safeQr = qr.trim().startsWith('<svg') ? 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(qr) : /^data:image\/svg\+xml[;,]/.test(qr) ? qr : '';
+        content += '<p>Scan this QR code using your authenticator, or enter the setup key manually on this phone.</p>' + (safeQr ? '<img class="mfa-qr" src="' + Core.safeText(safeQr) + '" alt="Authenticator setup QR code">' : '') + '<details class="mfa-manual"><summary>Show manual setup key</summary><p class="meta">Account: ' + Core.safeText(mfa.profile.email || 'Clean Things') + '<br>Use a time-based code. Keep this key private.</p><code class="mfa-secret">' + Core.safeText(totp.secret) + '</code></details>';
+      } else content += '<p>Enter the current six-digit code from your authenticator app.</p>';
+      content += '<form id="mfa-form" novalidate>' + (!mfa.enrollment && mfa.factors.length > 1 ? '<div class="field"><label for="mfa-factor">Authenticator</label><select id="mfa-factor" name="factor">' + mfa.factors.map(function (factor) { return '<option value="' + Core.safeText(factor.id) + '">' + Core.safeText(factor.friendly_name || 'Authenticator') + '</option>'; }).join('') + '</select></div>' : '') + '<div class="field"><label for="mfa-code">Verification code</label><input id="mfa-code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required></div><button class="btn btn-primary btn-block" type="submit">Verify code</button></form>';
+      if (mfa.enrollment) content += '<button class="btn btn-ghost btn-block" data-action="mfa-cancel-setup">Cancel this setup</button>';
+    }
+    return '<div class="page"><div class="card"><h2>' + (mfa.backup ? 'Backup authenticator' : 'Administrator verification') + '</h2>' + content + '<p id="mfa-error" class="field-error" role="alert">' + Core.safeText(mfa.error || '') + '</p><button class="btn btn-ghost btn-block" data-action="mfa-recheck">Check sign-in status</button></div><div class="card"><h3>Lost your authenticator?</h3><p>Use a backup authenticator if you added one. Otherwise contact the app owner for an identity-checked reset. Resetting your password does not remove this check.</p></div><button class="btn btn-ghost btn-block" data-action="mfa-signout">Sign out</button></div>';
+  }
+
+  async function handleMfaAction(action, button) {
+    const mfa = ui.mfa;
+    if (!mfa || pendingActions.has("mfa")) return;
+    pendingActions.add("mfa"); button.disabled = true;
+    const epoch = authEpoch;
+    try {
+      if (action === "mfa-start") {
+        const enrollment = await Backend.enrollMfa();
+        if (epoch !== authEpoch || ui.mfa !== mfa) return;
+        mfa.enrollment = enrollment; mfa.error = '';
+      } else if (action === "mfa-cancel-setup" || action === "mfa-discard") {
+        const id = action === "mfa-discard" ? button.dataset.factor : mfa.enrollment.id;
+        await Backend.cancelMfaEnrollment(id);
+        if (epoch !== authEpoch || ui.mfa !== mfa) return;
+        mfa.enrollment = null; mfa.unfinished = mfa.unfinished.filter(function (factor) { return factor.id !== id; }); mfa.error = '';
+      } else if (action === "mfa-recheck") {
+        const account = await activateAccount(mfa.profile);
+        if (epoch !== authEpoch) return;
+        if (account) finishAccountEntry(account);
+      }
+    } catch (error) { if (epoch === authEpoch && ui.mfa === mfa) mfa.error = error.message; }
+    finally { pendingActions.delete("mfa"); if (epoch === authEpoch) render(); }
+  }
+
+  async function submitMfa(event) {
+    event.preventDefault();
+    if (!ui.mfa || pendingActions.has("mfa")) return;
+    const mfa = ui.mfa; const epoch = authEpoch;
+    const data = new FormData(event.currentTarget); const code = String(data.get("code") || '').trim();
+    if (!/^[0-9]{6}$/.test(code)) { mfa.error = 'Enter the six-digit code from your authenticator app.'; fieldMessage('mfa-error', mfa.error); return; }
+    const factorId = mfa.enrollment ? mfa.enrollment.id : String(data.get("factor") || (mfa.factors[0] && mfa.factors[0].id) || '');
+    pendingActions.add("mfa"); event.currentTarget.querySelector('[type="submit"]').disabled = true;
+    try {
+      await Backend.verifyMfa(factorId, code);
+      if (epoch !== authEpoch || ui.mfa !== mfa) return;
+      // Discard the setup secret immediately; only the provider's session is persisted.
+      mfa.enrollment = null;
+      const profile = await Backend.getMyProfile();
+      if (epoch !== authEpoch) return;
+      const account = await activateAccount(profile);
+      if (epoch !== authEpoch) return;
+      if (account) { finishAccountEntry(account); showToast(mfa.backup ? 'Backup authenticator added.' : 'Administrator verification complete.'); }
+    } catch (error) { if (epoch === authEpoch && ui.mfa === mfa) mfa.error = error.message; }
+    finally { pendingActions.delete("mfa"); if (epoch === authEpoch) render(); }
+  }
+
   function renderAccount() {
     const account = currentAccount();
     const themeLabel = state.preferences.theme === "dark" ? "Use light mode" : "Use dark mode";
@@ -723,7 +830,7 @@
     }
     const count = customerBookings().length;
     const management = account.role === "admin" ? '<div class="card admin-access-card"><h3>Management access</h3><p>Your account has administrator privileges.</p><button class="btn btn-admin btn-block" data-action="open-management" style="margin-top:14px">Open management dashboard</button></div>' : '';
-    return '<div class="page"><div class="profile-card">' + avatarMarkup(account, false) + '<div><h2>' + Core.safeText(account.name) + '</h2><p>' + Core.safeText(account.phone) + '</p></div></div><div class="metric-grid"><div class="metric"><strong>' + count + '</strong><span>Total bookings</span></div><div class="metric"><strong>' + customerBookings().filter(function (b) { return b.status === "Completed"; }).length + '</strong><span>Completed</span></div><div class="metric"><strong>' + customerBookings().filter(function (b) { return b.payment.status === "Paid"; }).length + '</strong><span>Paid</span></div></div><div class="card"><h3>Saved details</h3>' + summaryRow("Email", account.email || "Not set") + summaryRow("Vehicle", account.vehicle || "Not set") + summaryRow("Registration", account.plate || "Not set") + summaryRow("Default location", account.location || "Not set") + '<button class="btn btn-secondary btn-block" data-action="edit-profile" style="margin-top:14px">Edit profile & photo</button></div>' + management + sessionSecurityCard() + '<div class="card"><h3>Preferences</h3><button class="setting-row" data-action="toggle-theme"><span><strong>◐ ' + themeLabel + '</strong><small>Change the app appearance</small></span><span>›</span></button><button class="setting-row" data-action="customer-logout"><span><strong>Sign out</strong><small>Clear this account from this device</small></span><span>›</span></button></div></div>';
+    return '<div class="page"><div class="profile-card">' + avatarMarkup(account, false) + '<div><h2>' + Core.safeText(account.name) + '</h2><p>' + Core.safeText(account.phone) + '</p></div></div><div class="metric-grid"><div class="metric"><strong>' + count + '</strong><span>Total bookings</span></div><div class="metric"><strong>' + customerBookings().filter(function (b) { return b.status === "Completed"; }).length + '</strong><span>Completed</span></div><div class="metric"><strong>' + customerBookings().filter(function (b) { return b.payment.status === "Paid"; }).length + '</strong><span>Paid</span></div></div><div class="card"><h3>Saved details</h3>' + summaryRow("Email", account.email || "Not set") + summaryRow("Vehicle", account.vehicle || "Not set") + summaryRow("Registration", account.plate || "Not set") + summaryRow("Default location", account.location || "Not set") + '<button class="btn btn-secondary btn-block" data-action="edit-profile" style="margin-top:14px">Edit profile & photo</button></div>' + management + (account.role === 'admin' && isLive() ? '<div class="card"><h3>Two-step verification</h3><p>Administrator access requires your authenticator code.</p><button class="btn btn-secondary btn-block" data-action="mfa-backup">Add backup authenticator</button></div>' : '') + sessionSecurityCard() + '<div class="card"><h3>Preferences</h3><button class="setting-row" data-action="toggle-theme"><span><strong>◐ ' + themeLabel + '</strong><small>Change the app appearance</small></span><span>›</span></button><button class="setting-row" data-action="customer-logout"><span><strong>Sign out</strong><small>Clear this account from this device</small></span><span>›</span></button></div></div>';
   }
 
   function customerLoginForm() {
@@ -818,6 +925,7 @@
 
   function render() {
     applyTheme();
+    if (ui.mfa) ui.screen = "mfa";
     renderTopbar();
     renderBottomNav();
     if (ui.screen === "home") main.innerHTML = renderHome();
@@ -828,6 +936,7 @@
     else if (ui.screen === "payment") main.innerHTML = renderPayment();
     else if (ui.screen === "account") main.innerHTML = renderAccount();
     else if (ui.screen === "admin") main.innerHTML = renderAdmin();
+    else if (ui.screen === "mfa") main.innerHTML = renderMfa();
     else main.innerHTML = renderHome();
     document.getElementById("accessible-refresh").hidden = !canRefreshView();
     if (ui.screen === "booking" && ui.bookingStep === 2 && isLive()) {
@@ -862,6 +971,13 @@
     const epoch = authEpoch; const screen = ui.screen; const adminTab = ui.adminTab;
     try {
       const account = currentAccount();
+      if (account && account.role === "admin") {
+        const profile = await Backend.getMyProfile();
+        if (epoch !== authEpoch) return false;
+        if (!profile) { clearIdentity(); ui.screen = "account"; render(); return false; }
+        if (profile.role !== "admin") { await activateAccount(profile); if (epoch === authEpoch) { ui.screen = "account"; render(); } return false; }
+        if (!(await requireAdminMfa(profile, false))) { render(); return false; }
+      }
       const data = await Promise.all([Backend.listServices(!!(account && account.role === "admin")), Backend.listPublicSettings(), account ? Backend.listBookings() : [], account ? Backend.listReceipts() : [], account && account.role === "admin" ? Backend.listProfiles() : []]);
       const directory = await Promise.all(data[4].map(function (row) { return hydrateAvatar(profileToAccount(row)); }));
       if (epoch !== authEpoch) return;
@@ -878,6 +994,8 @@
   }
 
   function bindRenderedForms() {
+    const mfaForm = document.getElementById("mfa-form");
+    if (mfaForm) mfaForm.addEventListener("submit", submitMfa);
     const detailsForm = document.getElementById("details-form");
     if (detailsForm) detailsForm.addEventListener("submit", submitDetails);
     const paymentForm = document.getElementById("payment-form");
@@ -1673,6 +1791,13 @@
       if (!account) { showToast("The selected fictional demo role is unavailable."); return; }
       sessionStorage.setItem("cleanthings.customer.id", account.id);
       finishAccountEntry(account);
+    }
+    else if (action === "mfa-signout") await logout();
+    else if (["mfa-start", "mfa-cancel-setup", "mfa-discard", "mfa-recheck"].includes(action)) await handleMfaAction(action, button);
+    else if (action === "mfa-backup") {
+      const epoch = authEpoch;
+      try { const profile = await Backend.getMyProfile(); if (epoch === authEpoch && profile && profile.role === "admin") { await requireAdminMfa(profile, true); if (epoch === authEpoch) render(); } }
+      catch (error) { showToast(error.message); }
     }
     else if (action === "customer-logout") await logout();
     else if (action === "edit-profile") openEditProfile();

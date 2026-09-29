@@ -446,3 +446,9 @@ button { -webkit-tap-highlight-color: transparent; }
 .service-addons { margin: 20px 0; }
 .service-addon-row { min-width: 0; border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin: 14px 0; }
 .service-addon-row legend { font-weight: 700; padding: 0 6px; }
+
+.mfa-qr { display: block; width: 220px; max-width: 100%; height: auto; padding: 12px; margin: 18px auto; background: white; border-radius: 12px; }
+.mfa-manual { margin: 16px 0; }
+.mfa-manual summary { min-height: 44px; padding: 10px 0; cursor: pointer; font-weight: 700; }
+.mfa-secret { display: block; padding: 12px; margin: 10px 0; border: 1px solid var(--line); border-radius: 10px; overflow-wrap: anywhere; user-select: all; }
+#mfa-code { font-size: 24px; letter-spacing: .3em; text-align: center; }

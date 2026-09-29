@@ -35,7 +35,8 @@ async function inspect(page,name,width,theme,screenshot=false){
  try{
  for(const width of [360,393,412]) for(const theme of ['light','dark']){
   const context=await browser.newContext({viewport:{width,height:873},geolocation:{latitude:6.82,longitude:-58.16},permissions:['geolocation']});
-  const page=await context.newPage();let admin=false;let records=[];let uploadBytes=0;let serviceLoads=0;
+  const page=await context.newPage();let admin=false;let records=[];let uploadBytes=0;let serviceLoads=0;let mfaVerified=false;
+  let factors=width===393?[{id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',factor_type:'totp',status:'verified',friendly_name:'Primary authenticator'}]:[];
   page.on('pageerror',e=>runtimeErrors.push(e.message));
   await page.addInitScript(theme=>localStorage.setItem('cleanthings.prototype.v1',JSON.stringify({preferences:{theme}})),theme);
   await page.route('**/*',async route=>{
@@ -44,7 +45,19 @@ async function inspect(page,name,width,theme,screenshot=false){
     if(url.hostname==='tile.openstreetmap.org')return route.fulfill({contentType:'image/png',body:png});
     if(url.hostname!=='fixture.supabase.co')return route.abort();
     const p=url.pathname;let body=[];
-    if(p.startsWith('/auth/v1/token'))body={access_token:'fixture',refresh_token:'fixture',expires_at:Math.floor(Date.now()/1000)+3600,user:{id:'11111111-1111-4111-8111-111111111111'}};
+    if(p.startsWith('/auth/v1/token')){mfaVerified=false;body={access_token:'fixture',refresh_token:'fixture',expires_at:Math.floor(Date.now()/1000)+3600,user:{id:'11111111-1111-4111-8111-111111111111'}};}
+    else if(p==='/rest/v1/rpc/admin_mfa_status')body={enforced:true,required:admin,verified:mfaVerified};
+    else if(p==='/auth/v1/user')body={id:'11111111-1111-4111-8111-111111111111',factors};
+    else if(p==='/auth/v1/factors'){
+      const id=factors.length?'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb':'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+      factors.push({id,factor_type:'totp',status:'unverified',friendly_name:'New authenticator'});
+      body={id,totp:{secret:'JBSWY3DPEHPK3PXP',qr_code:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" fill="white"/><path d="M2 2h10v10H2zm18 0h10v10H20zM2 20h10v10H2zm18 0h10v10H20z" fill="black"/></svg>'}};
+    }else if(p.endsWith('/challenge'))body={id:'challenge-fixture'};
+    else if(p.endsWith('/verify')){
+      if(route.request().postDataJSON().code!=='123456')return route.fulfill({status:422,contentType:'application/json',body:JSON.stringify({code:'mfa_verification_failed',message:'Invalid code'})});
+      mfaVerified=true;factors.forEach(f=>{if(p.includes(f.id))f.status='verified'});
+      body={access_token:'fixture-aal2',refresh_token:'fixture-refresh-aal2',expires_in:3600,user:{id:'11111111-1111-4111-8111-111111111111'}};
+    }
     else if(p==='/rest/v1/profiles')body=[{user_id:'11111111-1111-4111-8111-111111111111',name:'Test Customer',phone:'5926000000',email:'customer@example.test',role:admin?'admin':'customer'}];
     else if(p==='/rest/v1/services'){serviceLoads++;body=[{id:'essential',name:'Essential Wash',icon:'🚙',price:3000,duration:'40 min',description:'Exterior wash and dry',includes:['Wash','Dry'],add_ons:[{id:'tyre-shine',name:'Tyre shine',description:'Finishing care',price:800}],enabled:true}];}
     else if(p==='/rest/v1/app_settings')body=[{key:'business_name',value:'Test Clean Things'},{key:'mmg_account_name',value:'Demo Merchant'},{key:'mmg_number',value:'000-0000'}];
@@ -96,7 +109,12 @@ async function inspect(page,name,width,theme,screenshot=false){
   await inspect(page,'bookings',width,theme);
   // Separate privileged fixture sign-in; server-role enforcement is tested in database.test.cjs.
   await page.locator('[data-screen=account]').click();await page.locator('[data-action=customer-logout]').click();admin=true;
-  await page.locator('#customer-email').fill('admin@example.test');await page.locator('#customer-password').fill(fixturePassword);await page.locator('#customer-login-form [type=submit]').click();await page.getByRole('heading',{name:'Business overview'}).waitFor();await inspect(page,'admin',width,theme,true);
+  await page.locator('#customer-email').fill('admin@example.test');await page.locator('#customer-password').fill(fixturePassword);await page.locator('#customer-login-form [type=submit]').click();await page.getByRole('heading',{name:'Administrator verification'}).waitFor();
+  if(!factors.some(f=>f.status==='verified'))await page.locator('[data-action=mfa-start]').click();
+  await page.locator('#mfa-code').waitFor();await inspect(page,'mfa-verification',width,theme,true);
+  assert.equal(await page.getByRole('heading',{name:'Business overview'}).count(),0);
+  await page.locator('#mfa-code').fill('000000');await page.locator('#mfa-form [type=submit]').click();await page.getByText('That code was not accepted.',{exact:false}).waitFor();
+  await page.locator('#mfa-code').fill('123456');await page.locator('#mfa-form [type=submit]').click();await page.getByRole('heading',{name:'Business overview'}).waitFor();await inspect(page,'admin',width,theme,true);
   await page.locator('[data-tab=bookings]').first().click();await inspect(page,'admin-bookings',width,theme,true);
   await page.locator('#admin-booking-month').fill('2099-01');assert.equal(await page.locator('.admin-record').count(),0);
   await page.locator('#clear-booking-month').click();assert.equal(await page.locator('.admin-record').count(),1);
@@ -112,6 +130,8 @@ async function inspect(page,name,width,theme,screenshot=false){
   await page.locator('[data-tab=more]').click();await page.locator('[data-tab=settings]').click();await inspect(page,'admin-settings',width,theme);
   results.push({name:'local-mocked-timing',width,theme,homeMs:Number(homeMs.toFixed(1)),submitMs:Number(submitMs.toFixed(1))});
   if(width===393 && theme==='light'){
+    await page.locator('[data-action=home]').click();await page.locator('[data-screen=account]').click();await page.locator('[data-action=mfa-backup]').click();await page.locator('[data-action=mfa-start]').click();await page.locator('#mfa-code').waitFor();await inspect(page,'mfa-backup',width,theme,true);
+    await page.locator('#mfa-code').fill('123456');await page.locator('#mfa-form [type=submit]').click();await page.getByRole('heading',{name:'Business overview'}).waitFor();assert.equal(factors.filter(f=>f.status==='verified').length,2);
     await page.reload();await page.getByText('● Live database',{exact:true}).waitFor();
     await page.locator('[data-screen=account]').click();await page.getByRole('heading',{name:'Account access'}).waitFor();
     assert.equal(await page.evaluate(()=>localStorage.getItem('cleanthings.supabase.session.v1')),null);
