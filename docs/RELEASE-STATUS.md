@@ -35,3 +35,9 @@ Android version code is 13. Real-phone gesture and upgrade checks remain outstan
 | Submitted report | Lecturer feedback and assignment brief available | Supply actual submitted report to correct its internal references |
 
 Do not describe missing evaluation sheets as completed independent evaluations. Do not substitute automated browser screenshots for human usability observations. Do not submit this version as deployed without the remaining gates and actual evidence.
+
+## Live availability incident — 29 September 2026
+
+A phone reported that `appointment_availability(requested_date)` was missing from the API schema cache. Read-only inspection confirmed the live database lacks that function and the `client_request_id` / `payment_proof_path` columns from the full repair migration.
+
+A targeted, transactional [availability hotfix](../supabase/migrations/202609290001_availability_hotfix.sql) has been tested against an older-schema fixture. It returns only slot times and status to authenticated users, denies anonymous execution and requests an API schema reload. It does not change booking rows, profile rows or payment data. Application to production is pending explicit owner approval; no repair has been applied during this incident. The broader repair migration remains a separate staging/rollout task. Existing v0.6.1 APKs can use this backend fix without reinstalling.
