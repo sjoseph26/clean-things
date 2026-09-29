@@ -96,6 +96,23 @@
     else showToast(message);
   }
 
+  let authRetryTimer;
+  function refreshAuthControls() {
+    clearTimeout(authRetryTimer);
+    if (!isLive() || !Backend.authRetrySeconds) return;
+    const form = document.getElementById("customer-login-form");
+    if (!form) return;
+    const login = form.querySelector('[type="submit"]');
+    const recovery = form.querySelector('[data-action="forgot-password"]');
+    const loginWait = Backend.authRetrySeconds("login");
+    const recoveryWait = Backend.authRetrySeconds("recovery");
+    login.disabled = pendingActions.has("login") || loginWait > 0;
+    login.textContent = loginWait ? "Try sign-in again in " + loginWait + "s" : "Sign in";
+    recovery.disabled = pendingActions.has("recovery") || recoveryWait > 0;
+    recovery.textContent = recoveryWait ? "Request another email in " + recoveryWait + "s" : "Reset password";
+    if (loginWait || recoveryWait) authRetryTimer = setTimeout(refreshAuthControls, 1000);
+  }
+
   function clearIdentity() {
     authEpoch += 1;
     sessionStorage.removeItem("cleanthings.customer.id");
@@ -799,6 +816,7 @@
       if (status) fieldMessage("schedule-error", status);
     }
     bindRenderedForms();
+    refreshAuthControls();
   }
 
   async function refreshCurrentView() {
@@ -946,7 +964,7 @@
         finishAccountEntry(account);
       } catch (error) {
         fieldMessage("customer-login-error", error.message);
-      } finally { pendingActions.delete("login"); button.disabled = false; }
+      } finally { pendingActions.delete("login"); button.disabled = false; refreshAuthControls(); }
       return;
     }
     const phone = String(data.get("phone") || "").trim();
@@ -1538,7 +1556,7 @@
       if (pendingActions.has("recovery")) return; pendingActions.add("recovery"); button.disabled = true;
       try { await Backend.requestPasswordReset(email); fieldMessage("customer-login-error", "If the account exists, a recovery email has been requested. Check your inbox and spam folder."); }
       catch (error) { fieldMessage("customer-login-error", error.message); }
-      finally { pendingActions.delete("recovery"); button.disabled = false; }
+      finally { pendingActions.delete("recovery"); button.disabled = false; refreshAuthControls(); }
     }
     else if (action === "pay-booking") navigate("payment", { reference: button.dataset.reference });
     else if (action === "request-reschedule" || action === "request-cancel") {

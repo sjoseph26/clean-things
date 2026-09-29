@@ -5,6 +5,53 @@
   const SESSION_KEY = "cleanthings.supabase.session.v1";
   let refreshPromise = null;
   let sessionGeneration = 0;
+  const AUTH_RETRY_KEY = "cleanthings.auth.retry.v1";
+  let authRetryUntil = {};
+  try {
+    const saved = JSON.parse(root.sessionStorage.getItem(AUTH_RETRY_KEY));
+    if (saved && typeof saved === "object" && !Array.isArray(saved)) authRetryUntil = saved;
+  } catch (error) { /* Storage may be unavailable. */ }
+
+  // A usability backoff only. Supabase enforces the actual rate limit, including
+  // requests made outside this app. Never store emails, passwords or tokens here.
+  function authRetrySeconds(action) {
+    const until = Number(authRetryUntil[action]);
+    return Number.isFinite(until) ? Math.max(0, Math.min(86400, Math.ceil((until - Date.now()) / 1000))) : 0;
+  }
+
+  function setAuthRetry(action, seconds) {
+    authRetryUntil[action] = Date.now() + Math.max(1, Math.min(86400, seconds)) * 1000;
+    try { root.sessionStorage.setItem(AUTH_RETRY_KEY, JSON.stringify(authRetryUntil)); } catch (error) { /* In-memory fallback. */ }
+  }
+
+  function retryError(seconds) {
+    const error = new Error("Too many attempts. Wait " + seconds + " seconds, then try again.");
+    error.status = 429; error.retryAfterSeconds = seconds;
+    return error;
+  }
+
+  async function authRequest(action, path, body) {
+    const remaining = authRetrySeconds(action);
+    if (remaining) throw retryError(remaining);
+    try {
+      return await request(path, { method: "POST", skipRefresh: true,
+        headers: { Authorization: "Bearer " + config.supabasePublishableKey },
+        body: JSON.stringify(body) });
+    } catch (error) {
+      if (error.status === 429) {
+        setAuthRetry(action, error.retryAfterSeconds || 60);
+        throw retryError(authRetrySeconds(action));
+      }
+      if (error.code === "invalid_credentials" || (action === "login" && error.status === 400 && (!error.code || error.code === 400))) {
+        error.message = "The email or password is incorrect.";
+      } else if (error.code === "email_not_confirmed") {
+        error.message = "Unable to sign in. Check your details and any account verification email.";
+      } else if (error.status >= 500) {
+        error.message = action === "recovery" ? "The recovery email service is temporarily unavailable. Please try again later." : "Sign-in is temporarily unavailable. Please try again later.";
+      }
+      throw error;
+    }
+  }
 
   async function fetchPayload(url, options) {
     const controller = new AbortController();
@@ -17,6 +64,12 @@
       if (!response.ok) {
         const error = new Error(String(payload && (payload.message || payload.msg || payload.error_description || payload.error) || "The live service returned an error."));
         error.status = response.status;
+        error.code = payload && (payload.error_code || payload.code);
+        if (response.status === 429) {
+          const header = response.headers && response.headers.get("Retry-After");
+          let seconds = header && /^\d+$/.test(header.trim()) ? Number(header) : Math.ceil((Date.parse(header) - Date.now()) / 1000);
+          error.retryAfterSeconds = Number.isFinite(seconds) && seconds > 0 ? Math.min(86400, seconds) : 60;
+        }
         throw error;
       }
       return payload;
@@ -85,11 +138,7 @@
 
   async function signIn(email, password) {
     const generation = ++sessionGeneration;
-    const result = await request("/auth/v1/token?grant_type=password", {
-      method: "POST",
-      skipRefresh: true,
-      body: JSON.stringify({ email: email, password: password })
-    });
+    const result = await authRequest("login", "/auth/v1/token?grant_type=password", { email: email, password: password });
     if (generation !== sessionGeneration) throw new Error("Sign-in was cancelled.");
     saveSession(result);
     return result;
@@ -200,9 +249,9 @@
 
   async function requestPasswordReset(email) {
     if (!/^https:\/\//.test(String(config.passwordResetUrl || ""))) throw new Error("Password recovery has not been configured. Contact the business for help.");
-    return request("/auth/v1/recover?redirect_to=" + encodeURIComponent(config.passwordResetUrl), {
-      method: "POST", skipRefresh: true, body: JSON.stringify({ email: email })
-    });
+    const result = await authRequest("recovery", "/auth/v1/recover?redirect_to=" + encodeURIComponent(config.passwordResetUrl), { email: email });
+    setAuthRetry("recovery", 60);
+    return result;
   }
 
   async function savePublicSettings(settings) {
@@ -349,6 +398,7 @@
 
   root.CleanThingsBackend = {
     enabled: enabled,
+    authRetrySeconds: authRetrySeconds,
     session: session,
     signIn: signIn,
     signUp: signUp,

@@ -1,0 +1,67 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> clean-things@0.6.0 test
+> node --test tests/core.test.js tests/backend.test.js tests/auth-security.test.cjs tests/regression.test.cjs tests/database.test.cjs tests/theme-contrast.test.js tests/location.test.js tests/workflow.test.js
+
+✔ AUTH-02 server 429 blocks retry locally, survives reload, then allows an explicit retry (5.370632ms)
+✔ AUTH-03 Retry-After accepts an HTTP date and safely defaults if absent or invalid (3.402195ms)
+✔ AUTH-04 invalid logins return the same message without leaking server detail (2.270844ms)
+✔ REC-02 reset requests use the configured HTTPS redirect and wait between successful requests (1.947707ms)
+✔ REC-03 missing recovery configuration sends no network request (0.920029ms)
+✔ REC-04 recovery throttling is separate from login and SMTP errors are sanitised (2.871221ms)
+Backend adapter tests passed.
+✔ tests/backend.test.js (102.94429ms)
+All Clean Things core tests passed.
+✔ tests/core.test.js (77.779446ms)
+▶ DB: customer isolation, availability, proof policy and recovery
+  ✔ SEC-01 anonymous booking denied (13.206727ms)
+  ✔ DATA-01 valid booking and retry return one record (28.113866ms)
+  ✔ SEC-02 other customer cannot read booking/profile (5.047967ms)
+  ✔ AVL-01 occupied slot visible without private details (3.031367ms)
+  ✔ AVL-02 conflicting account booking denied (2.672948ms)
+  ✔ SEC-03 customer cannot change other booking via RPC (2.72157ms)
+  ✔ SEC-04 customer cannot promote own role or edit prices/settings (6.110215ms)
+  ✔ VAL-01 missing/invalid schedule and phone rejected (10.664122ms)
+  ✔ AVL-03 whole-day blocking is atomic (10.209521ms)
+  ✔ PAY-01 image metadata accepted only in own booking folder (9.075876ms)
+  ✔ PAY-02 filename without stored proof is rejected (1.898574ms)
+  ✔ PAY-03 wrong path rejected and real path linked to exact booking (19.014756ms)
+  ✔ PAY-04 proof private to owner and administrator, immutable to customer (12.091369ms)
+  ✔ PAY-05 verified completed booking creates one linked receipt (9.927774ms)
+  ✔ SEC-05 customer cannot revert a verified payment (3.159807ms)
+  ✔ SEC-06 receipt private to owner and raw availability metadata hidden (5.61241ms)
+  ✔ REC-01 restore a database snapshot and reconcile linked records (893.770541ms)
+✔ DB: customer isolation, availability, proof policy and recovery (2210.982668ms)
+Native, GPS-centred pin and manual location tests passed.
+✔ tests/location.test.js (81.37433ms)
+✔ AUTH-05 login countdown survives render without disabling password recovery (209.073ms)
+✔ REC-05 recovery success is generic and starts a separate resend countdown (69.193898ms)
+✔ F01 startup loads catalog/settings and restores a session without persisting PII (35.606733ms)
+✔ F02 map save preserves all typed booking details (79.439251ms)
+✔ F03 invalid coordinates cannot close/save the map (32.964976ms)
+✔ F04 zoom preserves pin while map taps move it (30.190834ms)
+✔ F05 failed admin update does not alter booking status (27.674883ms)
+✔ F06 failed payment request does not change saved state (26.0861ms)
+✔ F07 editable service fields remain text in details and catalog (24.316136ms)
+✔ F08 punctuation-only phone is rejected before signup (26.602779ms)
+✔ F09 login email is read-only and ignored by profile editor (29.458982ms)
+✔ F10 add-on reorder and repricing preserve identities (1.788782ms)
+✔ F11 failed logout clears local identity and records (43.780537ms)
+✔ F13 schedule loads occupied slots on initial entry and fails closed (45.212492ms)
+✔ F14 repeated Submit sends one request and preserves retry key (43.373295ms)
+✔ LOC-01 GPS success and denial retain manual fallback (37.393563ms)
+✔ AUTH-01 forged UI admin flag does not reveal management (23.541463ms)
+✔ STATE-01 failed settings save leaves previous values (20.236861ms)
+✔ STATE-02 failed service/profile edits preserve saved records (43.569129ms)
+CSS-derived contrast checks passed: [{"theme":"light","selector":".slot.selected","foreground":"#ffffff","background":"#067575","ratio":5.513},{"theme":"light","selector":".success-mark","foreground":"#ffffff","background":"#087a55","ratio":5.35},{"theme":"light","selector":".btn-primary","foreground":"#ffffff","background":"#067575","ratio":5.513},{"theme":"light","selector":".btn-primary","foreground":"#ffffff","background":"#056776","ratio":6.546},{"theme":"dark","selector":".slot.selected","foreground":"#ffffff","background":"#067575","ratio":5.513},{"theme":"dark","selector":".success-mark","foreground":"#091a22","background":"#74e8b6","ratio":11.806},{"theme":"dark","selector":".btn-primary","foreground":"#031d25","background":"#53ded5","ratio":10.592},{"theme":"dark","selector":".btn-primary","foreground":"#031d25","background":"#43c5dc","ratio":8.504}]
+✔ tests/theme-contrast.test.js (92.75477ms)
+Authentication and booking workflow tests passed.
+✔ tests/workflow.test.js (85.412084ms)
+ℹ tests 48
+ℹ suites 0
+ℹ pass 48
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2366.586494

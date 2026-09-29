@@ -1,0 +1,169 @@
+{
+  "test": "bounded direct API password throttling",
+  "account": "unregistered random example.invalid address",
+  "attempts": 32,
+  "results": [
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": 400,
+      "retry_after": null
+    }
+  ],
+  "elapsed_seconds": 56.71,
+  "rate_limit_observed": false
+}

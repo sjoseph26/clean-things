@@ -8,6 +8,8 @@ Run from the repository root with generated demo configuration and `npm ci`. All
 | --- | --- | --- |
 | CORE | [core.test.js](../tests/core.test.js), included in `npm test` | Validation, totals, modal action behaviour and helper contracts |
 | BE / F12 | [backend.test.js](../tests/backend.test.js), included in `npm test` | Auth response formats, ownership API, raw proof upload, type/size validation, stalled-fetch abort |
+| AUTH-02..04, REC-02..04 | [auth-security.test.cjs](../tests/auth-security.test.cjs), included in `npm test` | 429/date-based backoff, reload persistence, expiry, generic credential errors, recovery resend limits and configuration failures |
+| AUTH-05, REC-05 | [regression.test.cjs](../tests/regression.test.cjs), included in `npm test` | UI countdown persistence, independent login/reset controls and generic recovery confirmation |
 | F01-F11, F13-F14, LOC-01, AUTH-01, STATE-01/02 | [regression.test.cjs](../tests/regression.test.cjs), included in `npm test` | Executed DOM workflows and injected failure cases |
 | SEC-01..06, DATA-01, AVL-01..03, VAL-01, PAY-01..05, REC-01 | [database.test.cjs](../tests/database.test.cjs), included in `npm test` | Real application SQL/RLS in embedded PostgreSQL with fixture service schemas |
 | C01/C02 and theme pairs | [theme-contrast.test.js](../tests/theme-contrast.test.js), included in `npm test` | Contrast computed from shipped CSS, not duplicate colour constants |
@@ -23,7 +25,9 @@ The browser flow signs in, chooses a service and mobile slot, uses simulated GPS
 
 The database suite uses PGlite with Auth/Storage service-table fixtures, a non-sending `net.http_post` fixture and no real Vault secrets. Only unavailable extension-install statements are skipped. App migrations, security-definer RPCs, row policies, triggers and restore logic execute. Storage API behaviour, actual email/Meta services and concurrent independent backend connections are separate tests.
 
-## Required staging and device cases - not yet executed
+## Required staging and device cases - not yet completed
+
+Partial LIVE-01 evidence from 29 September is recorded in [security verification](evidence/security-20260929/README.md). The full recovery/password-change and real-device cases remain open.
 
 Record tester, date, app/source version, device/OS/WebView, accounts, network, steps, expected/actual results and a redacted evidence path for each case.
 

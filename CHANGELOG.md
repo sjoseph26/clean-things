@@ -1,5 +1,13 @@
 # Change log
 
+## 0.6.0 security follow-up - 29 September 2026
+
+- Respect authentication rate-limit responses with a retry countdown that survives page reloads; keep login and recovery waits separate.
+- Add a recovery resend interval and generic credential/server-failure messages.
+- Add eight automated authentication/recovery cases and record live throttling evidence. The server token-request limit is now 60 requests per five minutes per IP.
+- Recovery email request accepted; inbox delivery, new-password submission and expired/used-token checks remain unverified. No administrator password or role was changed.
+- Replace local demo credentials with role-selection buttons; preserve the verified Android CI SDK path.
+
 ## 0.6.0 candidate - 21 September 2026
 
 - Repaired audited F01-F14 startup, map, validation, failed-write, logout, timeout, availability and duplicate-submit defects; added executable regression evidence.

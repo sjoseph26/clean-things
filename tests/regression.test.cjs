@@ -25,11 +25,39 @@ async function setup(options={}) {
   w.eval(fs.readFileSync(root+'core.js','utf8'));
   const code=fs.readFileSync(root+'app.js','utf8');
   assert.ok(code.endsWith('})();\n'));
-  w.eval(code.replace('  bootstrapBackend();\n})();',`window.audit={get state(){return state},get ui(){return ui},get services(){return services},render,navigate,bootstrapBackend,openLocationPicker,handleAdminAction,submitPayment,openEditCustomer,openServiceEditor,showServiceDetails,submitCustomerCreate,currentAccount,loadAvailability,activateAccount,logout,submitAdminSettings,openEditProfile,openEditBooking};window.auditReady=bootstrapBackend();})();`));
+  w.eval(code.replace('  bootstrapBackend();\n})();',`window.audit={get state(){return state},get ui(){return ui},get services(){return services},render,navigate,bootstrapBackend,openLocationPicker,handleAdminAction,submitPayment,openEditCustomer,openServiceEditor,showServiceDetails,submitCustomerCreate,currentAccount,loadAvailability,activateAccount,logout,submitAdminSettings,openEditProfile,openEditBooking,submitCustomerLogin,refreshAuthControls};window.auditReady=bootstrapBackend();})();`));
   await w.auditReady;
   return {w,a:w.audit,backend,calls,close:()=>w.close(),setSession:v=>active=v};
 }
 const booking=(a)=>({reference:'CT-TEST',id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',accountId:'user-1',...a.ui.draft,serviceName:'Wash',total:3000,status:'Pending confirmation',payment:{status:'Not submitted',reference:'',proofName:'',proofPath:''}});
+
+test('AUTH-05 login countdown survives render without disabling password recovery',async()=>{
+ const t=await setup({guest:true});try{
+  let remaining=0;
+  t.backend.authRetrySeconds=action=>action==='login'?remaining:0;
+  t.backend.signIn=async()=>{remaining=60;throw Error('Too many attempts. Wait 60 seconds, then try again.');};
+  t.a.navigate('account');
+  const form=t.w.document.getElementById('customer-login-form');
+  form.querySelector('[name=email]').value='fixture@example.test';
+  await t.a.submitCustomerLogin({preventDefault(){},currentTarget:form});
+  assert.equal(form.querySelector('[type=submit]').disabled,true);
+  assert.match(form.querySelector('[type=submit]').textContent,/60s/);
+  assert.equal(form.querySelector('[data-action=forgot-password]').disabled,false);
+  t.a.render();assert.equal(t.w.document.querySelector('#customer-login-form [type=submit]').disabled,true);
+  remaining=0;t.a.refreshAuthControls();assert.equal(t.w.document.querySelector('#customer-login-form [type=submit]').disabled,false);
+ }finally{t.close()}
+});
+test('REC-05 recovery success is generic and starts a separate resend countdown',async()=>{
+ const t=await setup({guest:true});try{
+  let remaining=0,calls=0;t.backend.authRetrySeconds=action=>action==='recovery'?remaining:0;
+  t.backend.requestPasswordReset=async()=>{calls++;remaining=60;};t.a.navigate('account');
+  t.w.document.getElementById('customer-email').value='fixture@example.test';
+  const reset=t.w.document.querySelector('[data-action=forgot-password]');reset.click();await tick();
+  assert.match(t.w.document.getElementById('customer-login-error').textContent,/If the account exists/);
+  assert.equal(reset.disabled,true);assert.match(reset.textContent,/60s/);reset.click();assert.equal(calls,1);
+  assert.equal(t.w.document.querySelector('#customer-login-form [type=submit]').disabled,false);
+ }finally{t.close()}
+});
 
 test('F01 startup loads catalog/settings and restores a session without persisting PII',async()=>{const t=await setup();try{assert.ok(t.calls.includes('services'));assert.ok(t.calls.includes('settings'));assert.equal(t.a.ui.backendStatus,'online');assert.equal(t.a.currentAccount().id,'user-1');assert.equal(t.a.state.settings.businessName,'Test Business');assert.equal(JSON.parse(t.w.localStorage.getItem('cleanthings.prototype.v1')).accounts,undefined);}finally{t.close()}});
 test('F02 map save preserves all typed booking details',async()=>{const t=await setup();try{t.a.navigate('booking',{serviceId:'essential'});t.a.ui.draft.serviceMode='mobile';t.a.ui.bookingStep=3;t.a.render();for(const [id,value] of [['name','Changed name'],['phone','5926999999'],['vehicle','Test vehicle'],['plate','TEST'],['notes','Keep this']])t.w.document.getElementById(id).value=value;t.w.document.querySelector('[name=waterConfirmed]').checked=true;t.a.openLocationPicker(false);t.w.document.querySelector('[data-map-save]').click();assert.equal(t.w.document.getElementById('vehicle').value,'Test vehicle');assert.equal(t.w.document.getElementById('notes').value,'Keep this');assert.equal(t.w.document.getElementById('name').value,'Changed name');assert.equal(t.w.document.querySelector('[name=waterConfirmed]').checked,true);}finally{t.close()}});

@@ -17,7 +17,8 @@
 
 | Gate | Current evidence | Required next action |
 | --- | --- | --- |
-| GitHub | Importable repository and CI files prepared | Connect/publish private repository; inspect first Actions run |
+| GitHub | Private sjoseph26/clean-things published; verification and QA build passed on 29 September | Require passing CI for subsequent changes |
+| Authentication hardening | Live IP throttling configured and HTTP 429 observed; retry/recovery regression tests added | Owner completes password reset, expired/used-link and subsequent sign-in tests; MFA and secure token storage remain future work |
 | Database rollout | Migration tested locally | Back up, apply to staging, run LIVE-01..05 before production |
 | Payment storage | Raw-body browser/adapter and SQL-policy tests | Actual Supabase upload/download/expiry/file-byte restore |
 | Native operation | Compiled and signed APK | Real-phone GPS, chooser and upgrade tests |

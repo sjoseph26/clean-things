@@ -1,0 +1,189 @@
+{
+  "test": "bounded direct API burst password throttling",
+  "account": "unregistered random example.invalid address",
+  "attempts": 30,
+  "results": [
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    },
+    {
+      "status": 429,
+      "code": "over_request_rate_limit",
+      "message": "Request rate limit reached",
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    },
+    {
+      "status": 400,
+      "code": "invalid_credentials",
+      "message": "Invalid login credentials",
+      "retry_after": null
+    }
+  ],
+  "elapsed_seconds": 23.26,
+  "rate_limit_observed": true
+}
