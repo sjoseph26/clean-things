@@ -11,6 +11,7 @@ required=['README.md','CHANGELOG.md','package.json','package-lock.json','.gitign
 required += ['app/src/main/assets/session-store.js', 'app/src/main/java/gy/cleanthings/app/SessionVault.java', 'app/src/main/java/gy/cleanthings/app/SessionCipher.java', 'tests/java/SessionCipherTest.java', 'tests/session-storage.test.cjs']
 required += ['supabase/migrations/202609290002_admin_mfa.sql', 'docs/ADMIN-MFA-ROLLOUT.md', 'tests/admin-mfa-database.test.cjs', 'tests/mfa-backend.test.cjs']
 required += ['app/src/main/java/gy/cleanthings/app/SavedLoginVault.java', 'app/src/main/java/gy/cleanthings/app/BiometricEnvelope.java', 'tests/java/BiometricEnvelopeTest.java', 'tests/java/BiometricAuthOrderTest.java', 'tests/biometric.test.cjs', 'docs/BIOMETRIC-UNLOCK.md']
+required += ['supabase/migrations/202609290003_payment_schedule_hotfix.sql','tests/payment-schedule-hotfix.test.cjs','docs/RANDY-FEEDBACK-v0.6.9.md']
 for f in required:
  if not (root/f).is_file():errors.append('Missing '+f)
 files=[]

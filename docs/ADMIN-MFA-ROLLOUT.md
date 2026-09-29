@@ -1,6 +1,6 @@
 # Administrator two-step verification rollout — v0.6.4
 
-Status: implemented and tested locally; **not enabled in the live database**. Randy's v0.6.2 baseline and the live authentication settings were left unchanged. The new feature branch contains the v0.6.3 encrypted-session changes as well as MFA.
+Status: implemented and tested locally; **not enabled in the live database**. v0.6.10 combines biometric sign-in and the tester fixes while preserving the current live role-based admin flow. Live authentication settings are unchanged.
 
 ## Behaviour
 
@@ -10,14 +10,14 @@ Customer sign-in is unchanged. Password-only admins can read their own profile t
 
 ## Activation sequence
 
-1. Finish or pause Randy's v0.6.2 test and arrange for every administrator to update to v0.6.4. Each person should use a separate admin account. Enrolling MFA may revoke other sessions on the same account.
+1. Finish or pause live testing and arrange for every administrator to update to v0.6.10 or later. Each person should use a separate admin account. Enrolling MFA may revoke other sessions on the same account.
 2. Keep an independently verified owner login to the Supabase dashboard, with its own recovery/backup factor. Dashboard MFA and Clean Things app MFA are separate.
 3. Back up the live database and capture the existing `public.is_admin()` function definition. Inspect current policies and privileged RPCs for custom admin checks that do not call this function. Verify `auth.mfa_factors` and `auth.jwt()` are available, TOTP enrolment/verification is enabled, and the live auth verification rate limits are suitable. Do not print any factor secrets or tokens.
 4. First apply [the migration](../supabase/migrations/202609290002_admin_mfa.sql) to a staging project using staging configuration and two disposable accounts. Run the acceptance checks below. The migration is independent of the broader release-repair migration; it changes no booking rows, account roles or authenticator factors.
 5. With owner approval and updated admin devices ready, apply the same transaction to production. This immediately restricts old password-only admin sessions. The new app can still access its own profile, enrol an authenticator and verify the code. The user must enter the real setup key and codes in their own authenticator/app; do not send them to chat or put them in screenshots.
 6. Each administrator verifies a first authenticator, then adds a backup from Account. Confirm a fresh sign-in with the backup before considering rollout complete. Record the acceptance results and the deployed migration version.
 
-Before activation, v0.6.4 displays an awaiting-activation message for admins and keeps management locked. It does not advertise frontend-only checking as completed MFA protection. Customers can continue using the app.
+Before activation, v0.6.10 recognises only the exact missing status-RPC response (HTTP 404/PGRST202), preserves existing server-authorised admin access and hides authenticator setup. Earlier v0.6.4–v0.6.8 builds instead blocked admins pending activation. Generic errors and malformed responses still block entry. After server activation, v0.6.10 requires verification before privileged reads. This compatibility behaviour does not implement or advertise frontend-only MFA.
 
 ## Acceptance checks
 

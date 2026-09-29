@@ -1,14 +1,12 @@
-# Deployment and recovery guide - v0.6.8
+# Deployment and recovery guide - v0.6.10
 
-## v0.6.8 saved-login sign-in correction
+## v0.6.10 combined biometric sign-in update
 
-The old app-lock design is superseded. Password sign-in now offers an unchecked Save login checkbox, followed by native biometric approval. The separate encrypted credential vault retains one email/password/user ID after sign-out. The fingerprint button decrypts it once and makes a fresh server password grant. Forget saved login removes it without ending the active session. No background timer, manual lock or unlock screen remains. Android version code 20; physical-device sensor/Keystore acceptance is still required. Administrator MFA remains staged; Randy's v0.6.2 baseline is unchanged.
+This build combines saved-login biometric account sign-in, encrypted native session storage and all v0.6.9 tester fixes. The fingerprint control is visible on the sign-in page. Save a login after successful password sign-in, sign out, then use biometrics to authenticate that account again. There is no app-lock screen or background lock timer.
 
-115 automated tests and 36 targeted browser state checks passed, with no selected-rule accessibility violations or browser runtime errors. The Android build compiled with Java/D8. These checks use fixtures, not real phone recognition or production account sign-in. See [current biometric flow](BIOMETRIC-UNLOCK.md).
+The approved private payment-storage and evening-hours hotfix is already live. Administrator MFA remains a separate, inactive server rollout. A precise missing-MFA-RPC response preserves the existing server-authorised admin flow; generic errors still block entry, and enforced MFA still requires verification. No new production database or authentication changes are part of this release. See [biometric setup and acceptance](BIOMETRIC-UNLOCK.md) and [v0.6.10 evidence](evidence/biometric-20260929-v0610.md).
 
-The version-specific sections below record earlier work and are superseded where they describe biometric app locking.
-
-This guide describes the prepared candidate. No production database change or GitHub publication was performed during this repair.
+The v0.6.9 targeted hotfix is deployed. Its source and fixes are incorporated into this combined biometric candidate; the main branch remains unchanged. The staging guidance below remains applicable to future rollouts. See [live verification](evidence/randy-20260929-live.md).
 
 ## 1. Prepare a staging project
 
@@ -44,7 +42,7 @@ For a live update set these variables privately and run `bash build-apk.sh live`
 
 The live build refuses to create a replacement signing key. The original key recovered during this repair matches the v0.5.5 certificate, but is excluded from all source packages and Git. The old prototype uses a development certificate; retain it for prototype upgrade continuity and plan a proper production signing strategy before a public release.
 
-The v0.6.4 live package keeps `gy.cleanthings.app` and increments version code to 16. Its APK signature can be verified with Android `apksigner verify --verbose --print-certs`. Install over the old prototype only after the migration and staging gates pass. Do not uninstall first if you intend to keep the existing installation. Moving bundled content from a file origin to HTTPS means users must sign in again; local file-origin preferences/demo state are not migrated. Shared backend records remain authoritative.
+The v0.6.2 live package keeps `gy.cleanthings.app` and increments version code to 14. Its APK signature can be verified with Android `apksigner verify --verbose --print-certs`. Install over the old prototype only after the migration and staging gates pass. Do not uninstall first if you intend to keep the existing installation. Moving bundled content from a file origin to HTTPS means users must sign in again; local file-origin preferences/demo state are not migrated. Shared backend records remain authoritative.
 
 Test on an actual Android phone: fresh launch, existing install update, sign-in, GPS allow/deny/approximate, file picker and proof upload, dark mode, back navigation, network loss and restart. Building and examining the APK cannot certify these interactions.
 
@@ -61,23 +59,3 @@ Deploy database-first, then test the candidate against staging, then perform a c
 The WhatsApp SQL trigger uses Meta's Cloud API and secrets held in Supabase Vault. This repair did not change provider credentials, send messages or establish delivery. A queued HTTP request is not proof of delivery. The current UI supports user-initiated WhatsApp/email sharing; no Facebook feature is included. Test external delivery separately with authorised recipients.
 
 Reference: [Supabase Storage access control](https://supabase.com/docs/guides/storage/security/access-control), [Android local WebView content](https://developer.android.com/develop/ui/views/layout/webapps/load-local-content).
-
-## v0.6.3 storage upgrade
-
-This feature candidate migrates the Android saved session to Keystore-backed encrypted storage. No database migration is required for this storage change. Upgrade over the existing app with the same certificate; do not uninstall first. Test sign-in restoration after force-stop, renewal and sign-out before wider distribution. Keep Randy's v0.6.2 tester baseline available while this separate feature candidate is validated. Browser previews now forget sign-in on reload. A failed native migration displays a warning and does not reuse the unsecured token; restart or sign in again. Administrator MFA/biometric enrolment is not included in this build.
-
-## v0.6.4 administrator MFA rollout
-
-Read [the MFA rollout guide](ADMIN-MFA-ROLLOUT.md) before using this candidate for administrators. Its management screens require the staged server enforcement function; they remain locked until that migration is deployed. Coordinate all admin device upgrades and staging/owner acceptance before activating it on production. Randy can continue testing v0.6.2 in the meantime. This build includes the v0.6.3 encrypted-session changes. Customers do not need administrator MFA.
-
-## v0.6.5 biometric candidate
-
-No extra SQL migration or server setting is needed for device biometric unlock. It is optional per saved account/device, requires Android 11+ and an enrolled Class 3 biometric, and must pass [real-phone acceptance](BIOMETRIC-UNLOCK.md). This build includes v0.6.4's staged administrator MFA requirement: admins remain blocked until its separate coordinated server activation. Keep Randy on the existing tester build meanwhile.
-
-### v0.6.6 biometric hotfix
-
-Use v0.6.6 for the next phone retry, installed as an update over v0.6.5. It corrects authenticated-key operation ordering and adds safe troubleshooting codes. No server migration or live activation is part of this hotfix. The staged administrator MFA restriction remains in place.
-
-### v0.6.7 sign-in icon update
-
-Install v0.6.7 over the current feature build to see the fingerprint sign-in control. The v0.6.6 biometric hotfix is included. Initial setup still requires a password sign-in and opt-in; biometric unlock restores a saved session. No live server change is included.

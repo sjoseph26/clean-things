@@ -1,6 +1,8 @@
-# Clean Things v0.6.8
+# Clean Things v0.6.10
 
-Android booking and service-management prototype. This is a **repair candidate**, with local automated evidence and a reproducible native build. It is not certified as deployment-ready; the new database migration and live acceptance checks are still required.
+Android booking and service-management prototype. This is a **repair candidate**, with local automated evidence and a reproducible native build. The targeted database hotfix is live; real-device acceptance checks are still required before broader rollout.
+
+This combines the v0.6.9 tester fixes with saved-login biometric sign-in and encrypted native sessions. The database repair is live; real-phone receipt and biometric acceptance remain pending. See [biometric setup](docs/BIOMETRIC-UNLOCK.md) and [current evidence](docs/evidence/biometric-20260929-v0610.md). Mandatory administrator MFA is a separate server rollout.
 
 ## Run the fictional demo
 
@@ -44,7 +46,7 @@ For an Android build, install JDK 17 and Android SDK platform 35/build-tools 35.
 bash build-apk.sh qa
 ```
 
-The output is `dist/CleanThings-qa-v0.6.8.apk`, a separate `gy.cleanthings.app.qa` app for fictional testing (Android 7+). The live variant requires the original signing key and connected configuration. See the deployment guide before building/installing it. Native version code: 20.
+The output is `dist/CleanThings-qa-v0.6.10.apk`, a separate `gy.cleanthings.app.qa` app for fictional testing (Android 7+). The live variant requires the original signing key and connected configuration. See the deployment guide before building/installing it. Native version code: 22.
 
 ## Project documentation
 
@@ -65,5 +67,3 @@ The output is `dist/CleanThings-qa-v0.6.8.apk`, a separate `gy.cleanthings.app.q
 | [Contributing](CONTRIBUTING.md) | Review and evidence expectations |
 
 Configuration, signing material, generated APKs, SDKs and dependencies are not committed. No historical Git commits or completed independent evaluations have been invented.
-
-Optional [saved-login biometric sign-in](docs/BIOMETRIC-UNLOCK.md) requires Android 11+ and a supported secure biometric. This candidate includes staged administrator MFA; finish device acceptance and coordinated activation before replacing the current tester build.

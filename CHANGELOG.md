@@ -1,5 +1,22 @@
 # Change log
 
+## 0.6.10 Combined biometric sign-in — 29 September 2026
+
+- Combine v0.6.8 saved-login biometric authentication and encrypted sessions with all v0.6.9 tester fixes.
+- Keep the fingerprint sign-in control visible with clear first-time and saved-login guidance.
+- Preserve live admin access while mandatory MFA is undeployed; recognise only the exact missing status RPC, and retain verification when enforcement is active. Do not offer premature authenticator enrolment.
+- Keep server authentication and role checks, password fallback, cancellation and Forget saved login. No app lock or background timeout.
+- Android version code 22 updates both previous builds. Physical biometric and receipt-image acceptance remain required.
+
+## 0.6.9 Randy tester feedback — 29 September 2026
+
+- Apply the approved private payment-proof bucket, image-linking field/RPC and owner/admin storage policies to Clean Things Live on 29 September 2026; configuration and authenticated availability checks passed.
+- Extend offered appointment starts to 7 pm weekdays and 9 pm Saturday/Sunday, including admin edits and day closures.
+- Order admin bookings and pending items newest-first by creation time.
+- Provide a top-right Customer/Admin switch without changing role or ending the session.
+- Show the selected proof filename immediately. Android version code 21, based on v0.6.2 tester branch; staged MFA and biometric features remain separate.
+
+
 ## 0.6.8 saved-login biometric sign-in — 29 September 2026
 
 - Replace app locking with saved email/password account sign-in after an explicit checkbox and biometric approval.

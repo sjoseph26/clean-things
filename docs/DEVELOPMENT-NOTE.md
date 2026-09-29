@@ -1,12 +1,10 @@
-# Technical design - v0.6.8
+# Technical design - v0.6.10
 
-## v0.6.8 saved-login sign-in correction
+## v0.6.10 combined biometric sign-in update
 
-The old app-lock design is superseded. Password sign-in now offers an unchecked Save login checkbox, followed by native biometric approval. The separate encrypted credential vault retains one email/password/user ID after sign-out. The fingerprint button decrypts it once and makes a fresh server password grant. Forget saved login removes it without ending the active session. No background timer, manual lock or unlock screen remains. Android version code 20; physical-device sensor/Keystore acceptance is still required. Administrator MFA remains staged; Randy's v0.6.2 baseline is unchanged.
+This build combines saved-login biometric account sign-in, encrypted native session storage and all v0.6.9 tester fixes. The fingerprint control is visible on the sign-in page. Save a login after successful password sign-in, sign out, then use biometrics to authenticate that account again. There is no app-lock screen or background lock timer.
 
-115 automated tests and 36 targeted browser state checks passed, with no selected-rule accessibility violations or browser runtime errors. The Android build compiled with Java/D8. These checks use fixtures, not real phone recognition or production account sign-in. See [current biometric flow](BIOMETRIC-UNLOCK.md).
-
-The version-specific sections below record earlier work and are superseded where they describe biometric app locking.
+The approved private payment-storage and evening-hours hotfix is already live. Administrator MFA remains a separate, inactive server rollout. A precise missing-MFA-RPC response preserves the existing server-authorised admin flow; generic errors still block entry, and enforced MFA still requires verification. No new production database or authentication changes are part of this release. See [biometric setup and acceptance](BIOMETRIC-UNLOCK.md) and [v0.6.10 evidence](evidence/biometric-20260929-v0610.md).
 
 ## Components and boundaries
 
@@ -71,22 +69,13 @@ Reference design guidance: [Android Keystore](https://developer.android.com/priv
 
 ## Administrator MFA (v0.6.4)
 
-The account bootstrap checks `admin_mfa_status()` before querying privileged records. A pending-MFA state holds only the current user's profile and transient enrolment/factor metadata, clears admin records and pins navigation to verification. Backend TOTP methods use `/auth/v1/factors`, `/challenge`, `/verify`, and the authoritative `/auth/v1/user` factor list. Verification validates six-digit input, serializes with refresh, preserves leading zeroes, checks login-generation races and saves the newly issued session before the server authorisation recheck. Error paths never infer admin access from a successful-looking client response. Setup uses a QR image/manual key, verified-factor selection and guarded cancellation of unfinished factors.
+The account bootstrap checks `admin_mfa_status()` before querying privileged records. v0.6.10 preserves the pre-rollout role-based flow only for the exact HTTP 404/PGRST202 missing-RPC response. Other failures block entry; staged enforcement remains authoritative when present. A pending-MFA state holds only the current user's profile and transient enrolment/factor metadata, clears admin records and pins navigation to verification. Backend TOTP methods use `/auth/v1/factors`, `/challenge`, `/verify`, and the authoritative `/auth/v1/user` factor list. Verification validates six-digit input, serializes with refresh, preserves leading zeroes, checks login-generation races and saves the newly issued session before the server authorisation recheck. Error paths never infer admin access from a successful-looking client response. Setup uses a QR image/manual key, verified-factor selection and guarded cancellation of unfinished factors.
 
 The standalone SQL migration tightens the existing `is_admin()` dependency shared by RLS and privileged RPCs; it leaves customer ownership policies intact. This is staged deployment work: neither live database enforcement nor actual factor enrolment has been performed. See [the rollout guide](ADMIN-MFA-ROLLOUT.md).
 
-## Biometric saved-session protection (v0.6.5)
 
-`BiometricEnvelope` stores an authenticated wrapping IV/key and a separately authenticated `SessionCipher` payload in the existing no-backup atomic session file. `SessionVault` selects the envelope by version, binds each prompt to a generation, uses strong auth-per-operation Keystore cryptography, and retains the unwrapped key only in memory. Refresh writes replace the encrypted payload without another prompt. Successful opt-in destroys the former ordinary storage key. Unlock/disable use an authenticated decrypt operation. Read/write deny a locked envelope.
+## Saved-login biometric sign-in (v0.6.10)
 
-The session adapter distinguishes a locked session from corrupt storage, drops leftover plaintext, correlates fixed native events, and requires native status plus a readable native session after success. Backend token rotation and prompts serialize; logout invalidates outstanding operations. The UI gate runs before bootstrap/profile/business reads; unlock then uses the existing `activateAccount` and MFA flow. `MainActivity` retires its bridge and recreates the document after a 60-second background gap. Screenshots are disabled while the native envelope is biometric-protected.
+`SavedLoginVault` stores one explicitly consented email/password/user ID in a separate authenticated encrypted envelope. A strong auth-per-use Keystore key wraps the payload key. The authenticated CryptoObject must be the exact cipher created for that request; AAD and payload processing occur only after successful authentication. Native results are correlated, one-use and cancelled when the trusted document or login generation changes.
 
-See [device acceptance and limitations](BIOMETRIC-UNLOCK.md). Native API usage was checked against Android's [biometric guide](https://developer.android.com/identity/sign-in/biometric-auth) and [Keystore key parameters](https://developer.android.com/reference/android/security/keystore/KeyGenParameterSpec.Builder).
-
-## Android authenticated-operation ordering hotfix (v0.6.6)
-
-Cipher initialization remains before `BiometricPrompt.authenticate` so Android can authorise that exact operation. `updateAAD` and `doFinal` occur only inside `BiometricEnvelope.create/unwrap` after the successful CryptoObject identity check. AAD is submitted exactly once, retaining the v1 envelope layout. The IV is captured before finalization. Android's [Keystore cipher implementation](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/main/keystore/java/android/security/keystore2/AndroidKeyStoreCipherSpiBase.java) can cache AAD-operation errors and raise them at `doFinal`; JVM software-only round trips did not exercise this auth boundary. `BiometricAuthOrderTest` now models that behaviour with real AES-GCM behind a gated CipherSpi, and `BIO-11` checks the native preparation boundary. Safe fixed stage codes distinguish proof/read/key/wrap/save/cleanup failures without returning raw exception messages.
-
-## Biometric sign-in entry (v0.6.7)
-
-A reusable inline SVG fingerprint appears in `biometricSignInControl` and `renderBiometricUnlock`. The normal sign-in form places it above the password fields. The `signin` action routes eligible saved sessions to the existing unlock handler; unavailable/unconfigured states display setup guidance in an accessible status region. The SVG is decorative and hidden from assistive technology; the labelled button remains keyboard accessible. Native storage, crypto, cancellation and server MFA behaviour are unchanged.
+The decrypted login is sent only to the normal password grant, and the returned user ID must match the saved identity before the session is accepted. Signing out clears session tokens while retaining the saved login; forgetting the login removes its ciphertext/keys without signing out the active account. No session lock, manual lock button, background timeout or offline account unlock remains. Physical Android Keystore and sensor behaviour requires device acceptance.

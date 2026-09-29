@@ -458,3 +458,4 @@ button { -webkit-tap-highlight-color: transparent; }
 .biometric-signin-choice .meta { margin: 10px 0 0; }
 .signin-password-label { margin: 18px 0; padding-top: 16px; border-top: 1px solid var(--line); text-align: center; color: var(--muted); font-size: 14px; }
 .biometric-signin { display: flex; align-items: center; justify-content: center; gap: 12px; white-space: normal; }
+.view-switch { flex: 0 0 auto; width: auto; min-width: 100px; padding: 0 10px; font-size: 14px; white-space: nowrap; flex-shrink: 0; }

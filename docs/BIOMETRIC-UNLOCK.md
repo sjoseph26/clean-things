@@ -1,4 +1,4 @@
-# Saved-login biometric sign-in — v0.6.8 candidate
+# Saved-login biometric sign-in — v0.6.10 candidate
 
 This replaces the earlier app-lock feature with account sign-in using an explicitly saved login. No lock screen, Lock now button or background timeout remains. The sign-in page always shows the fingerprint button.
 
@@ -22,6 +22,10 @@ Install as an update using the original signature. If the old app-lock feature w
 
 Automated checks cover consent, password verification before saving, cancellation, encrypted-envelope authentication, pre-authentication AAD ordering, forged/stale callbacks, sign-out retention, forgetting without logout, fresh server authentication, identity binding, late network responses, ordinary session restoration and the administrator MFA gate. Browser fixtures cover the visible flow at 360/393/412 pixels in light and dark themes. These fixtures do not exercise a real Android biometric sensor or Keystore.
 
-On a test phone, verify: install over the previous app; save/cancel/retry; sign out then biometric sign-in; force-stop/reopen without an app lock; background beyond one minute without an app lock; sensor lockout and password fallback; changed device biometrics; forgotten/changed password; saved-account replacement; Forget saved login while signed in and signed out; offline failure; account suspension; administrator MFA after biometric login. Record model, Android version and any fixed BIO-* error code. Never share passwords or biometric data.
+On a test phone, verify: install over the previous app; save/cancel/retry; sign out then biometric sign-in; force-stop/reopen without an app lock; background beyond one minute without an app lock; sensor lockout and password fallback; changed device biometrics; forgotten/changed password; saved-account replacement; Forget saved login while signed in and signed out; offline failure; account suspension; administrator access on the current live database; administrator MFA after biometric login in an enforced staging environment. Record model, Android version and any fixed BIO-* error code. Never share passwords or biometric data.
 
-The build includes staged administrator MFA, whose coordinated server rollout is still pending. Keep Randy on the current v0.6.2 test baseline until that rollout is ready. No production database/auth settings were changed by this correction.
+This build includes all v0.6.9 repairs: evening starts, private payment-image linking, newest-first admin records, and the Customer/Admin switch. It is signed as version code 22, so it can update both the owner's v0.6.8 and Randy's v0.6.9 installation. Install over the existing app; uninstalling clears saved logins.
+
+Administrator MFA remains staged. Only HTTP 404 with PostgREST code PGRST202 from the status RPC identifies the pre-rollout backend. In that case, the app uses the existing role-based flow and does not show authenticator setup. This does not grant a role or bypass database permissions. Network failures, generic 404s, permission errors and malformed status responses block admin entry. Once the server enforces MFA, its verification gate still runs after password or biometric login. No production database/auth settings are changed for this biometric release.
+
+The native implementation follows Android's [biometric cryptographic authentication guidance](https://developer.android.com/identity/sign-in/biometric-auth): a strong biometric authorises each use of the Keystore key; cryptographic data is processed only after authentication. Sensor/Keystore acceptance must still be recorded on a physical phone.

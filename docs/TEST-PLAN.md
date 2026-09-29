@@ -1,12 +1,10 @@
-# Test plan and evidence index - v0.6.8
+# Test plan and evidence index - v0.6.10
 
-## v0.6.8 saved-login sign-in correction
+## v0.6.10 combined biometric sign-in update
 
-The old app-lock design is superseded. Password sign-in now offers an unchecked Save login checkbox, followed by native biometric approval. The separate encrypted credential vault retains one email/password/user ID after sign-out. The fingerprint button decrypts it once and makes a fresh server password grant. Forget saved login removes it without ending the active session. No background timer, manual lock or unlock screen remains. Android version code 20; physical-device sensor/Keystore acceptance is still required. Administrator MFA remains staged; Randy's v0.6.2 baseline is unchanged.
+This build combines saved-login biometric account sign-in, encrypted native session storage and all v0.6.9 tester fixes. The fingerprint control is visible on the sign-in page. Save a login after successful password sign-in, sign out, then use biometrics to authenticate that account again. There is no app-lock screen or background lock timer.
 
-115 automated tests and 36 targeted browser state checks passed, with no selected-rule accessibility violations or browser runtime errors. The Android build compiled with Java/D8. These checks use fixtures, not real phone recognition or production account sign-in. See [current biometric flow](BIOMETRIC-UNLOCK.md).
-
-The version-specific sections below record earlier work and are superseded where they describe biometric app locking.
+The approved private payment-storage and evening-hours hotfix is already live. Administrator MFA remains a separate, inactive server rollout. A precise missing-MFA-RPC response preserves the existing server-authorised admin flow; generic errors still block entry, and enforced MFA still requires verification. No new production database or authentication changes are part of this release. See [biometric setup and acceptance](BIOMETRIC-UNLOCK.md) and [v0.6.10 evidence](evidence/biometric-20260929-v0610.md).
 
 Run from the repository root with generated demo configuration and `npm ci`. All automated test data is fictional. Exact command, result and source hashes are recorded in [the evidence summary](evidence/README.md). A passing local result does not imply a deployed result.
 
@@ -23,7 +21,11 @@ Run from the repository root with generated demo configuration and `npm ci`. All
 | C01/C02 and theme pairs | [theme-contrast.test.js](../tests/theme-contrast.test.js), included in `npm test` | Contrast computed from shipped CSS, not duplicate colour constants |
 | STATIC-LOCATION | [location.test.js](../tests/location.test.js), included in `npm test` | Static manifest/native/build contract checks; no Android runtime execution |
 | STATIC-WORKFLOW | [workflow.test.js](../tests/workflow.test.js), included in `npm test` | Static auth/form/RPC checks; complements behavioural tests |
-| BROWSER | [browser.test.cjs](../tests/browser.test.cjs), `npm run test:browser` | 15 UI states plus timing per width/theme; 360/393/412px, light and dark |
+| BROWSER | [browser.test.cjs](../tests/browser.test.cjs), `npm run test:browser` | Customer/admin and biometric states plus timing per width/theme; 360/393/412px, light and dark |
+| BIO / BIO-UI | [biometric.test.cjs](../tests/biometric.test.cjs) and [regression.test.cjs](../tests/regression.test.cjs) | Saved-login consent, native one-use result, real Java encryption, cancellation, identity/race checks, sign-out retention, admin compatibility |
+| SESSION / STORE | [session.test.cjs](../tests/session.test.cjs) and [session-storage.test.cjs](../tests/session-storage.test.cjs) | Renewal, revoked sessions, encrypted native migration and storage failures |
+| MFA | [mfa-backend.test.cjs](../tests/mfa-backend.test.cjs) and [admin-mfa-database.test.cjs](../tests/admin-mfa-database.test.cjs) | Staged enforcement; strict pre-rollout detection; codes, session races and SQL authority |
+| RANDY | [payment-schedule-hotfix.test.cjs](../tests/payment-schedule-hotfix.test.cjs) and regression tests | Pre-MFA live schema, receipt policies, evening slots, newest records and view switch |
 | PACKAGE | [check_source_package.py](../scripts/check_source_package.py), `npm run check` | Required files, links, version and package-secret exclusions |
 | NATIVE-BUILD | [build-apk.sh](../build-apk.sh) | AAPT2, javac, D8, alignment and actual APK signature verification |
 
@@ -67,29 +69,3 @@ On Android, verify a pull at the top of Home, Services and My bookings; scroll n
 Automated coverage: `ADMIN-01..04`, `BACK-01`, `SESSION-01..06` and `NATIVE-01` verify admin identity, structured add-ons, combined month filters, popup dismissal, token refresh races/revocation and Android asset loading. The browser suite additionally creates/edits/deletes a mocked booking, tests browser Back, and inspects the new add-on and filter layouts in both themes at three mobile widths.
 
 Phone acceptance: install v0.6.2 over the existing app; sign in as admin, background/resume and revisit management; create an add-on with distinct name/description/price, then reopen it; filter bookings by month, status and search; press/gesture Back on a booking or service dialog and confirm only the dialog closes. After the separately applied availability hotfix, use an agreed test booking to verify date selection, creation, adjustment and deletion against the live backend. Do not delete genuine customer records as test data.
-
-## v0.6.3 encrypted-storage checks
-
-`STORE-01..09`: migration ordering, encrypted-session precedence, failed migration, missing bridge/corrupt storage, failed write, logout failures, browser memory-only sessions, malformed legacy data and backend sign-in/refresh/sign-out integration. `STORE-10` compiles and executes the actual Java AES-GCM envelope code with the JVM provider: repeated round trips, unique IVs, tampered header/IV/ciphertext, truncation and wrong-key rejection. `STORE-11` checks native document/frame/no-backup restrictions; `NATIVE-01` verifies packaged HTML dependencies are allowed. These are not Android Keystore instrumentation tests.
-
-On a test phone, upgrade an existing signed-in v0.6.2 installation to v0.6.3, check the account remains usable, force-stop/reopen and verify restoration. Sign out, force-stop/reopen and confirm the account does not restore; sign in again and confirm encrypted persistence resumes. Repeat after access-token renewal and exercise normal bookings/GPS/file selection. Use a disposable test device/account for storage corruption or key-loss checks. Current runtime has no connected Android device or emulator, so those results must be recorded separately.
-
-## v0.6.4 MFA verification
-
-`MFA-API-01..10` cover challenge/verify payloads and token persistence, malformed input, wrong codes, verification throttling, logout/account-switch races, concurrent requests, enrolment gates, transient secrets, guarded cancellation and absent enforcement. `MFA-UI-01..05` cover protected-data gating, blocked rollout state, setup/no-secret-persistence, duplicate submission, wrong codes, logout and required post-verification server authorization. `MFA-DB` runs the staged SQL twice against an older-schema fixture and verifies direct RLS/RPC denials for password-only admins, customers and stale factorless AAL2 sessions. The full database suite also runs the migration with its other real policies.
-
-The browser suite exercises new-admin enrolment and returning-admin challenge, wrong then correct codes, a backup authenticator and the existing booking flows in both themes at three phone widths. Test codes and QR images are fixtures. Run [hosted and phone acceptance](ADMIN-MFA-ROLLOUT.md) before deployment.
-
-## Biometric verification (v0.6.5)
-
-`BIO-01..06` exercise the JS/native contract: locked plaintext migration denial, callback correlation, forged-success denial, cancellation/retry, password fallback, duplicate requests, enable/refresh/lock/disable. `BIO-07` executes the actual Java envelope with a JVM AES provider and checks modified headers/payloads, wrong keys, truncation and token rotation. `BIO-08` is a static Android boundary contract, not proof of runtime hardware behaviour. `BIO-09..10` cover backend logout and serialization with refresh/requests. `BIO-UI-01..06` exercise bootstrap/back navigation gating, cancellation/duplicates, mandatory server MFA after unlock, fallback races, network-failure retry and the successful customer account route.
-
-Browser tests simulate the native adapter in six viewport/theme combinations and inspect locked, cancelled, enabled and disabled screens, plus enable/lock/password actions. Hardware recognition, key invalidation and real lifecycle tests remain in [BIOMETRIC-UNLOCK.md](BIOMETRIC-UNLOCK.md).
-
-## v0.6.6 hotfix evidence
-
-112 automated tests passed. `BIO-07` additionally runs `BiometricAuthOrderTest`: pre-auth AAD poisons the test operation even if approval follows; post-auth wrap and unwrap succeed; unauthenticated operations fail. `BIO-11` asserts native prompt preparation has no AAD/finalization operations and that diagnostic messages expose no raw exceptions. These are host simulations, not device certification. Browser JavaScript/CSS/HTML are unchanged from v0.6.5's 141-result browser run; that evidence is carried forward without rerunning the unchanged UI. Repeat enable/restart/unlock on the reporting phone using v0.6.6.
-
-## v0.6.7 sign-in icon verification
-
-112 automated tests pass. `CT_BIOMETRIC_ONLY=1 npm run test:browser` runs the affected sign-in/unlock flows at 360, 393 and 412 pixels in both themes: 36 state inspections pass, with zero selected-rule accessibility violations or runtime errors. It checks the visible SVG/button, password-first setup help without protected reads, and the existing cancel, unlock, disable, enable, manual lock and password fallback paths. The previous unrelated 117-state flow was not rerun for this UI-only change. Actual device recognition remains pending the v0.6.6 hotfix retry.

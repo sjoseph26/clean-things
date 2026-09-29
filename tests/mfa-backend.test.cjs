@@ -47,7 +47,9 @@ test('MFA-API-09 enrollment result is never persisted; cancellation only deletes
  const result=await h.api.enrollMfa();assert.equal(result.totp.secret,'FIXTURE-SECRET');assert.ok(!JSON.stringify(h.api.session()).includes('FIXTURE-SECRET'));await h.api.cancelMfaEnrollment(factor);assert.ok(h.calls.some(c=>c.options.method==='DELETE'));
  verified=true;const before=h.calls.filter(c=>c.options.method==='DELETE').length;await assert.rejects(h.api.cancelMfaEnrollment(factor),/already active/);assert.equal(h.calls.filter(c=>c.options.method==='DELETE').length,before);
 });
-test('MFA-API-10 missing server enforcement is reported instead of granting access',async()=>{
- const h=setup(async()=>fail(404,'PGRST202'));await assert.rejects(h.api.adminMfaStatus(),/awaiting server activation/);
+test('MFA-API-10 only the precise missing RPC response reports pre-rollout mode',async()=>{
+ const h=setup(async()=>fail(404,'PGRST202'));const status=await h.api.adminMfaStatus();assert.equal(status.enforced,false);assert.equal(status.rolloutPending,true);assert.equal(status.verified,false);
+ for(const [http,code] of [[404,'not_found'],[403,'42501'],[500,'PGRST202'],[401,'unauthorized']]) { const failure=setup(async()=>fail(http,code));await assert.rejects(failure.api.adminMfaStatus()); }
+ await assert.rejects(h.api.enrollMfa(),/not active/);assert.ok(!h.calls.some(c=>c.url.includes('/factors')));
  const malformed=setup(async()=>ok({enforced:false,required:true,verified:true}));await assert.rejects(malformed.api.adminMfaStatus(),/could not be checked/);
 });

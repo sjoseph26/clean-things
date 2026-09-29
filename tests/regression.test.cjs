@@ -219,3 +219,43 @@ test('BIO-UI-05 sign-in page shows fingerprint and explicit unchecked save-login
 test('BIO-UI-06 biometric customer sign-in opens normal account and forget keeps account signed in',async()=>{
  const bio={available:true,enabled:true};const t=await setup({guest:true,biometric:bio});try{t.backend.signInWithBiometrics=async()=>t.setSession({user:{id:'user-1'}});await t.a.handleBiometric('signin');assert.equal(t.a.currentAccount().id,'user-1');t.backend.forgetSavedLogin=()=>bio.enabled=false;await t.a.handleBiometric('forget');assert.equal(t.a.currentAccount().id,'user-1');assert.equal(t.w.document.querySelector('[data-action=biometric-forget]'),null);}finally{t.close()}
 });
+
+test('RANDY-01 newest created booking and walk-in appear first regardless of input order',async()=>{
+ const t=await setup({admin:true});try{
+  t.a.state.bookings=[booking(t.a),booking(t.a),booking(t.a)];
+  t.a.state.bookings.forEach((b,i)=>Object.assign(b,{reference:['OLD','NEW','MIDDLE'][i],createdAt:['2026-09-01T00:00:00Z','2026-09-29T12:00:00Z','2026-09-15T00:00:00Z'][i],walkIn:i===1}));
+  t.a.ui.adminTab='bookings';t.a.ui.screen='admin';t.a.render();
+  assert.deepEqual(Array.from(t.w.document.querySelectorAll('.admin-record .booking-ref'),x=>x.textContent),['NEW','MIDDLE','OLD']);
+  t.a.ui.adminMonth='2026-09';t.a.render();assert.equal(t.w.document.querySelector('.admin-record .booking-ref').textContent,'NEW');
+ }finally{t.close()}
+});
+test('RANDY-02 top-right switch works both ways, retains selected admin tab and never grants customers admin',async()=>{
+ const t=await setup({admin:true});try{t.a.ui.screen='admin';t.a.ui.adminTab='bookings';t.a.render();t.w.document.querySelector('[data-action=customer-view]').click();await tick();assert.equal(t.a.ui.screen,'home');assert.equal(t.a.currentAccount().role,'admin');t.w.document.querySelector('#topbar [data-action=open-management]').click();await tick();assert.equal(t.a.ui.screen,'admin');assert.equal(t.a.ui.adminTab,'bookings');}finally{t.close()}
+ const c=await setup();try{c.a.navigate('home');assert.equal(c.w.document.querySelector('.view-switch'),null);c.a.navigate('admin');assert.match(c.w.document.querySelector('#app-main').textContent,/Administrator account required/);await tick();}finally{c.close()}
+});
+test('RANDY-03 admin date changes remove weekend-only times and clear stale time selection',async()=>{
+ const t=await setup({admin:true});try{const b=booking(t.a);Object.assign(b,{date:'2026-10-03',time:'21:00'});t.a.state.bookings=[b];t.a.openEditBooking(b.reference);const f=t.w.document.querySelector('#edit-booking-form');assert.equal(f.querySelector('[name=time]').value,'21:00');const date=f.querySelector('[name=date]');date.value='2026-10-05';date.dispatchEvent(new t.w.Event('change'));assert.equal(f.querySelector('[name=time]').value,'');assert.equal(f.querySelector('[value="21:00"]'),null);assert.ok(f.querySelector('[value="19:00"]'));}finally{t.close()}
+});
+test('RANDY-04 customer and administrator calendars show the correct weekday/weekend times',async()=>{
+ const t=await setup({admin:true});try{for(const [date,last,count] of [['2026-10-02','19:00',8],['2026-10-03','21:00',10],['2026-10-04','21:00',10]]){t.a.ui.screen='booking';t.a.ui.bookingStep=2;t.a.ui.draft.serviceId='essential';t.a.ui.draft.date=date;t.a.render();assert.equal(t.w.document.querySelectorAll('.slot').length,count);assert.ok(t.w.document.querySelector('.slot[data-time="'+last+'"]'));t.a.ui.screen='admin';t.a.ui.adminTab='schedule';t.a.ui.adminDate=date;t.a.render();assert.equal(t.w.document.querySelectorAll('.schedule-slot-admin').length,count);}}finally{t.close()}
+});
+
+
+test('BIO-UI-07 pre-rollout administrator can sign in with biometrics and switch views without an MFA setup gate',async()=>{
+ const t=await setup({guest:true,admin:true,biometric:{available:true,enabled:true}});try{
+  t.backend.signInWithBiometrics=async()=>t.setSession({user:{id:'user-1'}});
+  t.backend.adminMfaStatus=async()=>({enforced:false,rolloutPending:true,required:false,verified:false});
+  t.backend.listMfaFactors=async()=>{throw Error('Must not enrol before rollout')};
+  await t.a.handleBiometric('signin');assert.equal(t.a.currentAccount().role,'admin');assert.equal(t.a.ui.mfa,null);
+  t.a.navigate('account');assert.equal(t.w.document.querySelector('[data-action=mfa-backup]'),null);
+  t.w.document.querySelector('[data-action=open-management]').click();await tick();assert.equal(t.a.ui.screen,'admin');
+  t.w.document.querySelector('[data-action=customer-view]').click();await tick();assert.equal(t.a.ui.screen,'home');
+ }finally{t.close()}
+});
+test('BIO-UI-08 malformed MFA status still blocks privileged reads',async()=>{
+ const t=await setup({guest:true,admin:true});try{
+  t.setSession({user:{id:'user-1'}});let reads=0;t.backend.listProfiles=t.backend.listBookings=async()=>{reads++;return []};
+  t.backend.adminMfaStatus=async()=>({enforced:false,required:true,verified:true});
+  assert.equal(await t.a.activateAccount(await t.backend.getMyProfile()),null);assert.equal(reads,0);assert.equal(t.a.ui.screen,'mfa');
+ }finally{t.close()}
+});

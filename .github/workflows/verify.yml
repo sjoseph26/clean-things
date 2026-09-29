@@ -49,5 +49,5 @@ jobs:
       - run: bash build-apk.sh qa
       - uses: actions/upload-artifact@v4
         with:
-          name: CleanThings-QA-v0.6.8
-          path: dist/CleanThings-qa-v0.6.8.apk
+          name: CleanThings-QA-v0.6.10
+          path: dist/CleanThings-qa-v0.6.10.apk

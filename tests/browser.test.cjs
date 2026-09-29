@@ -105,7 +105,7 @@ async function inspect(page,name,width,theme,screenshot=false){
   await page.locator('#vehicle').fill('Test vehicle');await page.locator('#plate').fill('TEST-001');await page.locator('#notes').fill('Preserve this note');await page.locator('[name=waterConfirmed]').check();await page.locator('[data-action=choose-current-location]').click();await page.getByText('Current location found.',{exact:false}).waitFor();
   const before=await page.locator('#map-latitude').inputValue();await page.locator('[aria-label="Zoom in"]').click();assert.equal(await page.locator('#map-latitude').inputValue(),before);await inspect(page,'map',width,theme,true);await page.locator('[data-map-save]').click();assert.equal(await page.locator('#notes').inputValue(),'Preserve this note');await inspect(page,'details',width,theme);
   await page.locator('#details-form [type=submit]').click();await page.locator('#confirm-accuracy').check();await inspect(page,'review',width,theme);const submitStart=performance.now();await page.locator('[data-action=confirm-booking]').click();await page.getByRole('heading',{name:'Booking request sent'}).waitFor();const submitMs=performance.now()-submitStart;await inspect(page,'success',width,theme);
-  await page.locator('[data-action=pay-booking]').first().click();await inspect(page,'payment',width,theme,true);await page.locator('#payment-proof').setInputFiles({name:'proof.png',mimeType:'image/png',buffer:png});await page.locator('#payment-form [type=submit]').click();await page.getByText('Pending review',{exact:true}).waitFor();assert.equal(uploadBytes,png.length);
+  await page.locator('[data-action=pay-booking]').first().click();await inspect(page,'payment',width,theme,true);await page.locator('#payment-proof').setInputFiles({name:'proof.png',mimeType:'image/png',buffer:png});assert.equal(await page.locator('#payment-proof-selection').textContent(),'Selected: proof.png');await page.locator('#payment-form [type=submit]').click();await page.getByText('Pending review',{exact:true}).waitFor();assert.equal(uploadBytes,png.length);
   await inspect(page,'bookings',width,theme);
   // Separate privileged fixture sign-in; server-role enforcement is tested in database.test.cjs.
   await page.locator('[data-screen=account]').click();await page.locator('[data-action=customer-logout]').click();admin=true;
@@ -115,6 +115,8 @@ async function inspect(page,name,width,theme,screenshot=false){
   assert.equal(await page.getByRole('heading',{name:'Business overview'}).count(),0);
   await page.locator('#mfa-code').fill('000000');await page.locator('#mfa-form [type=submit]').click();await page.getByText('That code was not accepted.',{exact:false}).waitFor();
   await page.locator('#mfa-code').fill('123456');await page.locator('#mfa-form [type=submit]').click();await page.getByRole('heading',{name:'Business overview'}).waitFor();await inspect(page,'admin',width,theme,true);
+  await page.getByRole('button',{name:'Switch to customer view',exact:true}).click();await page.getByRole('button',{name:'Switch to admin view',exact:true}).waitFor();await inspect(page,'customer-view-switch',width,theme,true);
+  await page.getByRole('button',{name:'Switch to admin view',exact:true}).click();await page.getByRole('heading',{name:'Business overview'}).waitFor();
   await page.locator('[data-tab=bookings]').first().click();await inspect(page,'admin-bookings',width,theme,true);
   await page.locator('#admin-booking-month').fill('2099-01');assert.equal(await page.locator('.admin-record').count(),0);
   await page.locator('#clear-booking-month').click();assert.equal(await page.locator('.admin-record').count(),1);
@@ -127,10 +129,12 @@ async function inspect(page,name,width,theme,screenshot=false){
   await inspect(page,'admin-addons',width,theme,true);
   assert.equal(await page.evaluate(()=>window.CleanThingsHandleBack()),true);assert.equal(await page.locator('[role=dialog]').count(),0);
   await page.locator('[data-tab=schedule]').click();await page.locator('#admin-date').waitFor();await inspect(page,'admin-schedule',width,theme);
+  await page.locator('#admin-date').fill('2099-10-03');await page.locator('.schedule-slot-admin[data-time="21:00"]').waitFor();assert.equal(await page.locator('.schedule-slot-admin').count(),10);await inspect(page,'weekend-evening-hours',width,theme,true);
+  await page.locator('#admin-date').fill('2099-10-05');await page.locator('.schedule-slot-admin[data-time="21:00"]').waitFor({state:'detached'});assert.equal(await page.locator('.schedule-slot-admin').count(),8);assert.equal(await page.locator('.schedule-slot-admin[data-time="19:00"]').count(),1);
   await page.locator('[data-tab=more]').click();await page.locator('[data-tab=settings]').click();await inspect(page,'admin-settings',width,theme);
   results.push({name:'local-mocked-timing',width,theme,homeMs:Number(homeMs.toFixed(1)),submitMs:Number(submitMs.toFixed(1))});
   if(width===393 && theme==='light'){
-    await page.locator('[data-action=home]').click();await page.locator('[data-screen=account]').click();await page.locator('[data-action=mfa-backup]').click();await page.locator('[data-action=mfa-start]').click();await page.locator('#mfa-code').waitFor();await inspect(page,'mfa-backup',width,theme,true);
+    await page.getByRole('button',{name:'Switch to customer view',exact:true}).click();await page.locator('[data-screen=account]').click();await page.locator('[data-action=mfa-backup]').click();await page.locator('[data-action=mfa-start]').click();await page.locator('#mfa-code').waitFor();await inspect(page,'mfa-backup',width,theme,true);
     await page.locator('#mfa-code').fill('123456');await page.locator('#mfa-form [type=submit]').click();await page.getByRole('heading',{name:'Business overview'}).waitFor();assert.equal(factors.filter(f=>f.status==='verified').length,2);
     await page.reload();await page.getByText('● Live database',{exact:true}).waitFor();
     await page.locator('[data-screen=account]').click();await page.getByRole('heading',{name:'Account access'}).waitFor();
@@ -139,7 +143,7 @@ async function inspect(page,name,width,theme,screenshot=false){
   await context.close();
  }
  for(const width of [360,393,412]) for(const theme of ['light','dark']){
-  const context=await browser.newContext({viewport:{width,height:873}});const page=await context.newPage();let protectedReads=0,passwordGrants=0;
+  const context=await browser.newContext({viewport:{width,height:873}});const page=await context.newPage();let protectedReads=0,passwordGrants=0;const legacyAdmin=width===412;
   page.on('pageerror',e=>runtimeErrors.push(e.message));
   await page.addInitScript(theme=>localStorage.setItem('cleanthings.prototype.v1',JSON.stringify({preferences:{theme}})),theme);
   await page.route('**/*',async route=>{
@@ -154,7 +158,8 @@ async function inspect(page,name,width,theme,screenshot=false){
     if(url.hostname==='127.0.0.1')return route.continue();
     let body=[];
     if(url.pathname==='/auth/v1/token'){assert.equal(url.searchParams.get('grant_type'),'password');passwordGrants++;body={access_token:'fixture',refresh_token:'fixture',expires_at:Math.floor(Date.now()/1000)+3600,user:{id:'user-1'}};}
-    if(url.pathname==='/rest/v1/profiles'){protectedReads++;body=[{user_id:'user-1',name:'Biometric tester',phone:'5926000000',email:'fixture@example.test',role:'customer'}];}
+    if(url.pathname==='/rest/v1/rpc/admin_mfa_status')return route.fulfill({status:404,contentType:'application/json',body:JSON.stringify({code:'PGRST202',message:'Missing function public.admin_mfa_status'})});
+    if(url.pathname==='/rest/v1/profiles'){protectedReads++;body=[{user_id:'user-1',name:'Biometric tester',phone:'5926000000',email:'fixture@example.test',role:legacyAdmin?'admin':'customer'}];}
     if(url.pathname==='/rest/v1/bookings' || url.pathname==='/rest/v1/receipts')protectedReads++;
     return route.fulfill({contentType:'application/json',body:JSON.stringify(body)});
   });
@@ -164,12 +169,12 @@ async function inspect(page,name,width,theme,screenshot=false){
   assert.equal(await page.locator('[name=saveLogin]').isChecked(),false);await inspect(page,'biometric-signin',width,theme,true);
   await page.locator('[data-action=biometric-signin]').click();await page.getByText('Sign in with your password and tick Save login for biometric sign-in.',{exact:true}).waitFor();
   await page.locator('#customer-email').fill('fixture@example.test');await page.locator('#customer-password').fill('fixture-only');await page.locator('[name=saveLogin]').check();
-  await page.locator('#customer-login-form [type=submit]').click();await page.getByRole('heading',{name:'Biometric tester'}).waitFor();assert.equal(passwordGrants,1);
+  await page.locator('#customer-login-form [type=submit]').click();await page.getByRole('heading',{name:legacyAdmin?'Business overview':'Biometric tester'}).waitFor();if(legacyAdmin){assert.equal(await page.locator('[data-action=mfa-start]').count(),0);await page.getByRole('button',{name:'Switch to customer view',exact:true}).click();await page.locator('[data-screen=account]').click();assert.equal(await page.locator('[data-action=mfa-backup]').count(),0);}assert.equal(passwordGrants,1);
   assert.equal(await page.locator('[data-action=biometric-lock]').count(),0);await inspect(page,'biometric-saved',width,theme,true);
   await page.locator('[data-action=customer-logout]').click();await page.locator('#customer-login-form').waitFor();assert.equal(await page.locator('[data-action=biometric-forget]').count(),1);
   await inspect(page,'biometric-signed-out',width,theme,true);
   await page.locator('[data-action=biometric-signin]').click();await page.getByText('Verification cancelled. Try again.',{exact:true}).waitFor();assert.equal(passwordGrants,1);await inspect(page,'biometric-cancelled',width,theme);
-  await page.locator('[data-action=biometric-signin]').click();await page.getByRole('heading',{name:'Biometric tester'}).waitFor();assert.equal(passwordGrants,2);await inspect(page,'biometric-signed-in',width,theme,true);
+  await page.locator('[data-action=biometric-signin]').click();await page.getByRole('heading',{name:legacyAdmin?'Business overview':'Biometric tester'}).waitFor();if(legacyAdmin){assert.equal(await page.locator('[data-action=mfa-start]').count(),0);await page.getByRole('button',{name:'Switch to customer view',exact:true}).click();await page.locator('[data-screen=account]').click();assert.equal(await page.locator('[data-action=mfa-backup]').count(),0);}assert.equal(passwordGrants,2);await inspect(page,'biometric-signed-in',width,theme,true);
   await page.locator('[data-action=biometric-forget]').click();await page.getByText('Saved login removed from this device.',{exact:true}).waitFor();assert.equal(await page.getByRole('heading',{name:'Biometric tester'}).count(),1);await inspect(page,'biometric-forgotten',width,theme);
   await context.close();
  }

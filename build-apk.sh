@@ -5,7 +5,7 @@ SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/workspace/android-sdk}}"
 TOOLS="$SDK_ROOT/build-tools/35.0.1"
 ANDROID_JAR="$SDK_ROOT/platforms/android-35/android.jar"
 VARIANT="${1:-qa}"
-VERSION="0.6.8"
+VERSION="0.6.10"
 BUILD_DIR="$PROJECT_DIR/build/$VARIANT"
 DIST_DIR="$PROJECT_DIR/dist"
 for required in "$ANDROID_JAR" "$TOOLS/aapt2" "$TOOLS/d8" "$TOOLS/zipalign" "$TOOLS/apksigner"; do
@@ -33,7 +33,7 @@ if [[ ! -f "$KEYSTORE" ]]; then
   keytool -genkeypair -keystore "$KEYSTORE" -storepass:env CT_STORE_PASSWORD -keypass:env CT_KEY_PASSWORD -alias "$KEY_ALIAS" -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=Clean Things QA,O=Classroom QA,C=GY' >/dev/null 2>&1
 fi
 "$TOOLS/aapt2" compile --dir "$BUILD_DIR/res" -o "$BUILD_DIR/resources.zip"
-"$TOOLS/aapt2" link -o "$BUILD_DIR/app-unsigned.apk" -I "$ANDROID_JAR" --manifest "$BUILD_DIR/AndroidManifest.xml" --java "$BUILD_DIR/gen" --min-sdk-version 24 --target-sdk-version 35 --version-code 20 --version-name "$VERSION-$VARIANT" -A "$PROJECT_DIR/app/src/main/assets" "$BUILD_DIR/resources.zip"
+"$TOOLS/aapt2" link -o "$BUILD_DIR/app-unsigned.apk" -I "$ANDROID_JAR" --manifest "$BUILD_DIR/AndroidManifest.xml" --java "$BUILD_DIR/gen" --min-sdk-version 24 --target-sdk-version 35 --version-code 22 --version-name "$VERSION-$VARIANT" -A "$PROJECT_DIR/app/src/main/assets" "$BUILD_DIR/resources.zip"
 find "$PROJECT_DIR/app/src/main/java" "$BUILD_DIR/gen" -name '*.java' > "$BUILD_DIR/sources.txt"
 java -m jdk.compiler/com.sun.tools.javac.Main -source 8 -target 8 -classpath "$ANDROID_JAR" -d "$BUILD_DIR/classes" @"$BUILD_DIR/sources.txt"
 java -m jdk.jartool/sun.tools.jar.Main cf "$BUILD_DIR/classes.jar" -C "$BUILD_DIR/classes" .

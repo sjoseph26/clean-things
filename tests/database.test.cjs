@@ -37,7 +37,7 @@ test('DB: customer isolation, availability, proof policy and recovery', async t 
   const date=(await db.query(`select ((now() at time zone 'America/Guyana')::date + 2)::text as d`)).rows[0].d;
   const base={serviceId:'essential',serviceMode:'bay',date,time:'08:30',name:'Fixture A',phone:'5926000000',vehicle:'Test car',plate:'TEST',addOns:[],requestId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'};
   const role=async(id)=>{await db.exec('reset role');await db.query(`select set_config('request.jwt.claim.sub',$1,false)`,[id||'']);await db.query(`select set_config('request.jwt.claim.aal',$1,false)`,[id===ADMIN?'aal2':'aal1']);await db.exec(`set role ${id?'authenticated':'anon'}`);};
-  const create=(draft)=>db.query('select (public.create_booking($1::jsonb)).*',[JSON.stringify(draft)]);
+  const create=(draft)=>db.query('select * from public.create_booking($1::jsonb)',[JSON.stringify(draft)]);
   const update=(input)=>db.query('select (public.update_my_booking($1::jsonb)).*',[JSON.stringify(input)]);
   let booking;
   await t.test('SEC-01 anonymous booking denied',async()=>{await role(null);await assert.rejects(create(base),/permission denied/);});
@@ -96,6 +96,12 @@ test('DB: customer isolation, availability, proof policy and recovery', async t 
     assert.deepEqual((await restored.query('select * from receipts order by id')).rows,(await db.query('select * from receipts order by id')).rows);
     assert.deepEqual((await restored.query('select name from storage.objects order by name')).rows,(await db.query('select name from storage.objects order by name')).rows);
     await restored.close();
+  });
+  await t.test('RANDY-DB full repair also accepts new evening hours and rejects weekday weekend-only slots',async()=>{
+    await role(A);
+    await create({...base,requestId:null,date:'2099-10-02',time:'19:00'});
+    await create({...base,requestId:null,date:'2099-10-03',time:'21:00'});
+    await assert.rejects(create({...base,requestId:null,date:'2099-10-05',time:'21:00'}),/offered/);
   });
   await db.close();
 });

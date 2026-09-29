@@ -242,8 +242,11 @@
       if (!result || result.enforced !== true || typeof result.required !== "boolean" || typeof result.verified !== "boolean") throw new Error("Administrator security could not be checked. Try again.");
       return result;
     } catch (error) {
-      if (error.code === "PGRST202" || error.status === 404) {
-        throw new Error("Two-step verification is awaiting server activation. Contact the app owner, or use the current tester build until rollout is ready.");
+      // This exact response identifies the pre-rollout API used by the live app.
+      // It grants no role: profiles and every privileged operation remain server-authorised.
+      // Network failures, generic 404s and malformed responses must still fail closed.
+      if (error.code === "PGRST202" && error.status === 404) {
+        return {enforced:false, rolloutPending:true, required:false, verified:false};
       }
       throw error;
     }
@@ -269,6 +272,7 @@
   async function enrollMfa() {
     const generation = sessionGeneration;
     const status = await adminMfaStatus();
+    if (!status.enforced) throw new Error("Authenticator setup is not active yet.");
     const factors = await listMfaFactors();
     if (generation !== sessionGeneration) throw new Error("Your session changed. Sign in again.");
     if (!status.required || (factors.some(function (factor) { return factor.status === "verified"; }) && !status.verified)) throw new Error("Verify an existing authenticator before adding another.");
