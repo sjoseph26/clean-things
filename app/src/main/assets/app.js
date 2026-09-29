@@ -709,6 +709,12 @@
     return '<div class="page"><div class="card"><div class="status-line"><span class="booking-ref">' + Core.safeText(booking.reference) + '</span>' + statusBadge(booking.payment.status) + '</div><h3>' + Core.safeText(booking.serviceName) + '</h3><div class="summary-row total-row"><span>Amount due</span><strong>' + Core.money(booking.total) + '</strong></div></div><div class="card"><div class="status-line"><h3>MMG payment details</h3>' + (isLive() ? '' : '<span class="badge demo">Fictional</span>') + '</div>' + summaryRow("Account name", details.accountName) + summaryRow("MMG number", details.number) + summaryRow("Payment note", booking.reference) + '<p class="meta" style="margin-top:10px">' + details.note + '</p><button class="btn btn-secondary btn-small" style="margin-top:12px" data-action="copy-mmg" data-reference="' + Core.safeText(booking.reference) + '">Copy payment note</button></div><form id="payment-form" class="card" novalidate><h3>Submit payment evidence</h3><p class="meta" style="margin-bottom:15px">Enter a reference or select an image. Connected accounts can upload a JPEG, PNG or WebP image up to 3 MB.</p><div class="field"><label for="payment-reference">MMG reference</label><input id="payment-reference" name="reference" autocomplete="off" value="' + Core.safeText(booking.payment.reference || "") + '" placeholder="e.g. MMG-DEMO-123"></div><div class="field"><label for="payment-proof">Proof image <span class="meta">(optional)</span></label><input id="payment-proof" name="proof" type="file" accept="image/jpeg,image/png,image/webp"><span class="field-hint">Current: ' + Core.safeText(booking.payment.proofName || "No image selected") + '</span></div><span id="payment-error" class="field-error"></span><button class="btn btn-primary btn-block" type="submit">Submit for admin review</button></form></div>';
   }
 
+  function sessionSecurityCard() {
+    if (!isLive() || !Backend.sessionStorageStatus) return "";
+    const storage = Backend.sessionStorageStatus();
+    return '<div class="card"><h3>Sign-in protection</h3><p>' + Core.safeText(storage.message) + '</p></div>';
+  }
+
   function renderAccount() {
     const account = currentAccount();
     const themeLabel = state.preferences.theme === "dark" ? "Use light mode" : "Use dark mode";
@@ -717,7 +723,7 @@
     }
     const count = customerBookings().length;
     const management = account.role === "admin" ? '<div class="card admin-access-card"><h3>Management access</h3><p>Your account has administrator privileges.</p><button class="btn btn-admin btn-block" data-action="open-management" style="margin-top:14px">Open management dashboard</button></div>' : '';
-    return '<div class="page"><div class="profile-card">' + avatarMarkup(account, false) + '<div><h2>' + Core.safeText(account.name) + '</h2><p>' + Core.safeText(account.phone) + '</p></div></div><div class="metric-grid"><div class="metric"><strong>' + count + '</strong><span>Total bookings</span></div><div class="metric"><strong>' + customerBookings().filter(function (b) { return b.status === "Completed"; }).length + '</strong><span>Completed</span></div><div class="metric"><strong>' + customerBookings().filter(function (b) { return b.payment.status === "Paid"; }).length + '</strong><span>Paid</span></div></div><div class="card"><h3>Saved details</h3>' + summaryRow("Email", account.email || "Not set") + summaryRow("Vehicle", account.vehicle || "Not set") + summaryRow("Registration", account.plate || "Not set") + summaryRow("Default location", account.location || "Not set") + '<button class="btn btn-secondary btn-block" data-action="edit-profile" style="margin-top:14px">Edit profile & photo</button></div>' + management + '<div class="card"><h3>Preferences</h3><button class="setting-row" data-action="toggle-theme"><span><strong>◐ ' + themeLabel + '</strong><small>Change the app appearance</small></span><span>›</span></button><button class="setting-row" data-action="customer-logout"><span><strong>Sign out</strong><small>Clear this account from this device</small></span><span>›</span></button></div></div>';
+    return '<div class="page"><div class="profile-card">' + avatarMarkup(account, false) + '<div><h2>' + Core.safeText(account.name) + '</h2><p>' + Core.safeText(account.phone) + '</p></div></div><div class="metric-grid"><div class="metric"><strong>' + count + '</strong><span>Total bookings</span></div><div class="metric"><strong>' + customerBookings().filter(function (b) { return b.status === "Completed"; }).length + '</strong><span>Completed</span></div><div class="metric"><strong>' + customerBookings().filter(function (b) { return b.payment.status === "Paid"; }).length + '</strong><span>Paid</span></div></div><div class="card"><h3>Saved details</h3>' + summaryRow("Email", account.email || "Not set") + summaryRow("Vehicle", account.vehicle || "Not set") + summaryRow("Registration", account.plate || "Not set") + summaryRow("Default location", account.location || "Not set") + '<button class="btn btn-secondary btn-block" data-action="edit-profile" style="margin-top:14px">Edit profile & photo</button></div>' + management + sessionSecurityCard() + '<div class="card"><h3>Preferences</h3><button class="setting-row" data-action="toggle-theme"><span><strong>◐ ' + themeLabel + '</strong><small>Change the app appearance</small></span><span>›</span></button><button class="setting-row" data-action="customer-logout"><span><strong>Sign out</strong><small>Clear this account from this device</small></span><span>›</span></button></div></div>';
   }
 
   function customerLoginForm() {
@@ -827,6 +833,10 @@
     if (ui.screen === "booking" && ui.bookingStep === 2 && isLive()) {
       const status = ui.availabilityLoading ? "Loading availability…" : ui.availabilityError;
       if (status) fieldMessage("schedule-error", status);
+    }
+    if (isLive() && Backend.sessionStorageStatus) {
+      const warning = Backend.sessionStorageStatus().warning;
+      if (warning) main.insertAdjacentHTML("afterbegin", '<div class="info-callout warning-callout" role="alert">' + Core.safeText(warning) + '</div>');
     }
     bindRenderedForms();
     refreshAuthControls();

@@ -1,4 +1,4 @@
-# Deployment and recovery guide - v0.6.2
+# Deployment and recovery guide - v0.6.3
 
 This guide describes the prepared candidate. No production database change or GitHub publication was performed during this repair.
 
@@ -36,7 +36,7 @@ For a live update set these variables privately and run `bash build-apk.sh live`
 
 The live build refuses to create a replacement signing key. The original key recovered during this repair matches the v0.5.5 certificate, but is excluded from all source packages and Git. The old prototype uses a development certificate; retain it for prototype upgrade continuity and plan a proper production signing strategy before a public release.
 
-The v0.6.2 live package keeps `gy.cleanthings.app` and increments version code to 14. Its APK signature can be verified with Android `apksigner verify --verbose --print-certs`. Install over the old prototype only after the migration and staging gates pass. Do not uninstall first if you intend to keep the existing installation. Moving bundled content from a file origin to HTTPS means users must sign in again; local file-origin preferences/demo state are not migrated. Shared backend records remain authoritative.
+The v0.6.3 live package keeps `gy.cleanthings.app` and increments version code to 15. Its APK signature can be verified with Android `apksigner verify --verbose --print-certs`. Install over the old prototype only after the migration and staging gates pass. Do not uninstall first if you intend to keep the existing installation. Moving bundled content from a file origin to HTTPS means users must sign in again; local file-origin preferences/demo state are not migrated. Shared backend records remain authoritative.
 
 Test on an actual Android phone: fresh launch, existing install update, sign-in, GPS allow/deny/approximate, file picker and proof upload, dark mode, back navigation, network loss and restart. Building and examining the APK cannot certify these interactions.
 
@@ -53,3 +53,7 @@ Deploy database-first, then test the candidate against staging, then perform a c
 The WhatsApp SQL trigger uses Meta's Cloud API and secrets held in Supabase Vault. This repair did not change provider credentials, send messages or establish delivery. A queued HTTP request is not proof of delivery. The current UI supports user-initiated WhatsApp/email sharing; no Facebook feature is included. Test external delivery separately with authorised recipients.
 
 Reference: [Supabase Storage access control](https://supabase.com/docs/guides/storage/security/access-control), [Android local WebView content](https://developer.android.com/develop/ui/views/layout/webapps/load-local-content).
+
+## v0.6.3 storage upgrade
+
+This feature candidate migrates the Android saved session to Keystore-backed encrypted storage. No database migration is required for this storage change. Upgrade over the existing app with the same certificate; do not uninstall first. Test sign-in restoration after force-stop, renewal and sign-out before wider distribution. Keep Randy's v0.6.2 tester baseline available while this separate feature candidate is validated. Browser previews now forget sign-in on reload. A failed native migration displays a warning and does not reuse the unsecured token; restart or sign in again. Administrator MFA/biometric enrolment is not included in this build.

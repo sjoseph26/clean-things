@@ -1,5 +1,23 @@
 # Change log
 
+## 0.6.3 feature candidate - 29 September 2026
+
+- Save Android sign-in sessions in an AES-256-GCM encrypted file under the no-backup directory, using a non-exportable Android Keystore key.
+- Migrate legacy browser-local tokens after encrypted storage acknowledges the write; display failures and never authenticate from failed migration data.
+- Delete ciphertext and key on sign-out; still attempt server revocation if device storage fails.
+- Keep browser-preview tokens in memory only, with a visible explanation in the account page.
+- Restrict the native storage bridge to the bundled main document, block frames/workers and reject alternate/remote main documents.
+- Add migration, failure, backend integration and actual Java encryption-envelope tests. Native version code 15.
+- Administrator MFA and biometrics are separate future changes. Android Keystore behaviour and upgrade/restart need device verification.
+
+## 0.6.2 - 29 September 2026
+
+- Repair admin identity and refresh-token handling; use local sign-out scope.
+- Add structured add-on fields and a booking month filter covering scheduled bookings and walk-ins.
+- Close pop-ups before Back navigates; permit the pull-refresh script through the Android asset allowlist.
+- Build code 14; 68 automated checks and 104 browser state/timing results passed.
+- The separately approved availability hotfix was applied to the live database.
+
 ## 0.6.1 - 29 September 2026
 
 - Replace the large refresh button with pull-to-refresh on live browsing screens.

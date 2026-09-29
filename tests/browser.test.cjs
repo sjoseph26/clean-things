@@ -86,6 +86,8 @@ async function inspect(page,name,width,theme,screenshot=false){
   await page.locator('[data-screen=account]').click();await inspect(page,'signin',width,theme);
   await page.locator('[data-mode=create]').click();await inspect(page,'signup',width,theme);
   await page.locator('[data-mode=signin]').click();await page.locator('#customer-email').fill('customer@example.test');await page.locator('#customer-password').fill(fixturePassword);await page.locator('#customer-login-form [type=submit]').click();await page.getByRole('heading',{name:'Test Customer'}).waitFor();
+  assert.equal(await page.evaluate(()=>localStorage.getItem('cleanthings.supabase.session.v1')),null);
+  await inspect(page,'account-protection',width,theme,true);
   await page.locator('[data-action=home]').click();await page.locator('[data-action=start-booking]').first().click();await page.locator('.choice-card').first().click();await page.locator('[data-action=booking-next]').click();await page.locator('.slot[data-time="08:30"]:enabled').waitFor();await page.locator('.choice-card').filter({has:page.locator('[value=mobile]')}).click();await page.locator('[data-time="08:30"]').click();await inspect(page,'schedule',width,theme,true);await page.locator('[data-action=booking-next]').click();
   await page.locator('#vehicle').fill('Test vehicle');await page.locator('#plate').fill('TEST-001');await page.locator('#notes').fill('Preserve this note');await page.locator('[name=waterConfirmed]').check();await page.locator('[data-action=choose-current-location]').click();await page.getByText('Current location found.',{exact:false}).waitFor();
   const before=await page.locator('#map-latitude').inputValue();await page.locator('[aria-label="Zoom in"]').click();assert.equal(await page.locator('#map-latitude').inputValue(),before);await inspect(page,'map',width,theme,true);await page.locator('[data-map-save]').click();assert.equal(await page.locator('#notes').inputValue(),'Preserve this note');await inspect(page,'details',width,theme);
@@ -109,6 +111,11 @@ async function inspect(page,name,width,theme,screenshot=false){
   await page.locator('[data-tab=schedule]').click();await page.locator('#admin-date').waitFor();await inspect(page,'admin-schedule',width,theme);
   await page.locator('[data-tab=more]').click();await page.locator('[data-tab=settings]').click();await inspect(page,'admin-settings',width,theme);
   results.push({name:'local-mocked-timing',width,theme,homeMs:Number(homeMs.toFixed(1)),submitMs:Number(submitMs.toFixed(1))});
+  if(width===393 && theme==='light'){
+    await page.reload();await page.getByText('● Live database',{exact:true}).waitFor();
+    await page.locator('[data-screen=account]').click();await page.getByRole('heading',{name:'Account access'}).waitFor();
+    assert.equal(await page.evaluate(()=>localStorage.getItem('cleanthings.supabase.session.v1')),null);
+  }
   await context.close();
  }
  }finally{await browser.close();server.close();fs.writeFileSync(path.join(out,'results.json'),JSON.stringify({results,violations,runtimeErrors,note:'Chromium with mocked remote responses and simulated GPS; not live/device certification.'},null,2));}

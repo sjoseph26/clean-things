@@ -2,7 +2,7 @@
   "use strict";
 
   const config = root.CLEAN_THINGS_CONFIG || {};
-  const SESSION_KEY = "cleanthings.supabase.session.v1";
+  const sessionStore = root.CleanThingsSessionStore;
   let refreshPromise = null;
   let refreshGeneration = -1;
   let sessionGeneration = 0;
@@ -85,16 +85,23 @@
   }
 
   function session() {
-    try { return JSON.parse(localStorage.getItem(SESSION_KEY)) || null; }
+    try { return sessionStore.read(); }
     catch (error) { return null; }
   }
 
   function saveSession(value) {
-    if (value) localStorage.setItem(SESSION_KEY, JSON.stringify(value));
+    if (value) {
+      try { sessionStore.write(value); }
+      catch (error) {
+        sessionGeneration += 1;
+        if (root.dispatchEvent && root.Event) root.dispatchEvent(new root.Event("cleanthings:session-ended"));
+        throw error;
+      }
+    }
     else {
       sessionGeneration += 1;
-      localStorage.removeItem(SESSION_KEY);
-      if (root.dispatchEvent && root.Event) root.dispatchEvent(new root.Event("cleanthings:session-ended"));
+      try { sessionStore.clear(); }
+      finally { if (root.dispatchEvent && root.Event) root.dispatchEvent(new root.Event("cleanthings:session-ended")); }
     }
   }
 
@@ -183,8 +190,11 @@
   async function signOut() {
     const active = session();
     sessionGeneration += 1;
-    saveSession(null);
-    if (active) await request("/auth/v1/logout?scope=local", { method: "POST", skipRefresh: true, headers: { Authorization: "Bearer " + active.access_token } });
+    let storageError = null;
+    try { saveSession(null); } catch (error) { storageError = error; }
+    try {
+      if (active) await request("/auth/v1/logout?scope=local", { method: "POST", skipRefresh: true, headers: { Authorization: "Bearer " + active.access_token } });
+    } finally { if (storageError) throw storageError; }
   }
 
   async function getMyProfile() {
@@ -416,6 +426,7 @@
     enabled: enabled,
     authRetrySeconds: authRetrySeconds,
     session: session,
+    sessionStorageStatus: function () { return sessionStore.status(); },
     signIn: signIn,
     signUp: signUp,
     signOut: signOut,

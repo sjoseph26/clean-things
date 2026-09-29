@@ -10,6 +10,7 @@ function harness(replies, tabStorage=storage()) {
   const config={supabaseUrl:'https://fixture.supabase.co',supabasePublishableKey:'public-fixture-for-tests-only',passwordResetUrl:'https://recovery.example.test/'};
   const context={window:{CLEAN_THINGS_CONFIG:config,sessionStorage:tabStorage},localStorage:storage(),Date:Clock,AbortController,setTimeout,clearTimeout,
     fetch:async(url,options)=>{calls.push({url,options});const r=replies.shift();assert.ok(r,'unexpected network request');return {ok:r.status<400,status:r.status,headers:{get:()=>r.retryAfter||null},text:async()=>JSON.stringify(r.body||{})};}};
+  vm.runInNewContext(fs.readFileSync('app/src/main/assets/session-store.js','utf8'),context);
   vm.runInNewContext(source,context);
   return {api:context.window.CleanThingsBackend,calls,config,tabStorage,advance:ms=>{now+=ms}};
 }

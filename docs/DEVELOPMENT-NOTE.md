@@ -1,4 +1,4 @@
-# Technical design - v0.6.2
+# Technical design - v0.6.3
 
 ## Components and boundaries
 
@@ -52,3 +52,11 @@ Reference: [Android WebView guidance](https://developer.android.com/develop/ui/v
 The authenticated profile remains separate from directory completeness. Refresh operations preserve that profile while merging other customer records. Auth refresh is serialized per login generation, and rejected resource requests receive at most one retry with a renewed token. Definitive refresh-token/session error codes clear identity; network and generic permission failures do not. Ordinary logout explicitly uses local scope. See [Supabase sign-out scopes](https://supabase.com/docs/guides/auth/signout) and [Auth error codes](https://supabase.com/docs/guides/auth/debugging/error-codes).
 
 Add-on fieldsets preserve database JSON structure and IDs, independent of names or description punctuation. Month filtering applies to appointment dates, with Guyana-local creation dates for walk-ins. The native Back handler first evaluates the page's synchronous dialog-dismissal hook; browser history handling has the same visible behaviour. Every HTML asset must pass the native asset allowlist test.
+
+## Encrypted session storage (v0.6.3 feature branch)
+
+`session-store.js` owns the cached session. On Android's bundled HTTPS origin it uses a three-method `SessionVault` bridge. The bridge is enabled by main-document navigation checks, remote main documents are denied, and CSP excludes child frames/workers. Every encrypted write uses a fresh provider-generated 96-bit IV and 128-bit authentication tag, with a versioned envelope and fixed application-specific associated data. `SessionCipher` is exercised directly in JVM tests. `SessionVault` uses Android Keystore AES-256 keys and `AtomicFile` ciphertext writes in the no-backup directory; it checks the resulting bytes before acknowledging a write.
+
+An existing encrypted session takes precedence over any legacy token. Migration writes the legacy value through the vault before removing localStorage. Failed migration leaves the old copy pending, exposes a warning and returns no active session. Write failures clear runtime identity and attempt native cleanup; they never store new tokens in localStorage. Sign-out attempts both local removal and remote revocation. A key that is lost or ciphertext that cannot authenticate produces a visible failure; fresh sign-in can replace unreadable data. Browser previews use in-memory sessions and require another sign-in after reload.
+
+Reference design guidance: [Android Keystore](https://developer.android.com/privacy-and-security/keystore), [cryptography](https://developer.android.com/privacy-and-security/cryptography), and [native bridge risks](https://developer.android.com/privacy-and-security/risks/insecure-webview-native-bridges). This is encryption at rest, not protection from runtime XSS or a compromised OS. No hardware-backed-key or biometric claim is made without device testing.

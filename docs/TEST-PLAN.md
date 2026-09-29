@@ -1,4 +1,4 @@
-# Test plan and evidence index - v0.6.2
+# Test plan and evidence index - v0.6.3
 
 Run from the repository root with generated demo configuration and `npm ci`. All automated test data is fictional. Exact command, result and source hashes are recorded in [the evidence summary](evidence/README.md). A passing local result does not imply a deployed result.
 
@@ -59,3 +59,9 @@ On Android, verify a pull at the top of Home, Services and My bookings; scroll n
 Automated coverage: `ADMIN-01..04`, `BACK-01`, `SESSION-01..06` and `NATIVE-01` verify admin identity, structured add-ons, combined month filters, popup dismissal, token refresh races/revocation and Android asset loading. The browser suite additionally creates/edits/deletes a mocked booking, tests browser Back, and inspects the new add-on and filter layouts in both themes at three mobile widths.
 
 Phone acceptance: install v0.6.2 over the existing app; sign in as admin, background/resume and revisit management; create an add-on with distinct name/description/price, then reopen it; filter bookings by month, status and search; press/gesture Back on a booking or service dialog and confirm only the dialog closes. After the separately applied availability hotfix, use an agreed test booking to verify date selection, creation, adjustment and deletion against the live backend. Do not delete genuine customer records as test data.
+
+## v0.6.3 encrypted-storage checks
+
+`STORE-01..09`: migration ordering, encrypted-session precedence, failed migration, missing bridge/corrupt storage, failed write, logout failures, browser memory-only sessions, malformed legacy data and backend sign-in/refresh/sign-out integration. `STORE-10` compiles and executes the actual Java AES-GCM envelope code with the JVM provider: repeated round trips, unique IVs, tampered header/IV/ciphertext, truncation and wrong-key rejection. `STORE-11` checks native document/frame/no-backup restrictions; `NATIVE-01` verifies packaged HTML dependencies are allowed. These are not Android Keystore instrumentation tests.
+
+On a test phone, upgrade an existing signed-in v0.6.2 installation to v0.6.3, check the account remains usable, force-stop/reopen and verify restoration. Sign out, force-stop/reopen and confirm the account does not restore; sign in again and confirm encrypted persistence resumes. Repeat after access-token renewal and exercise normal bookings/GPS/file selection. Use a disposable test device/account for storage corruption or key-loss checks. Current runtime has no connected Android device or emulator, so those results must be recorded separately.

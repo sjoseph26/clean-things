@@ -7,9 +7,11 @@ function harness(initial,handler){
  const data=new Map([['cleanthings.supabase.session.v1',JSON.stringify(initial)]]);const calls=[];let ended=0;
  const storage={getItem:k=>data.get(k)||null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)};
  const window={CLEAN_THINGS_CONFIG:{supabaseUrl:'https://fixture.supabase.co',supabasePublishableKey:'public-fixture-for-tests-only'},sessionStorage:storage,Event,dispatchEvent:()=>ended++};
- vm.runInNewContext(source,{window,localStorage:storage,AbortController,setTimeout,clearTimeout,fetch:async(url,options)=>{
+ const context={window,localStorage:storage,AbortController,setTimeout,clearTimeout,fetch:async(url,options)=>{
   calls.push({url,options});const result=await handler(url,options);return {ok:result.status<400,status:result.status,text:async()=>JSON.stringify(result.body||[])};
- }});
+ }};
+ vm.runInNewContext(fs.readFileSync('app/src/main/assets/session-store.js','utf8'),context);
+ vm.runInNewContext(source,context);
  return {api:window.CleanThingsBackend,calls,get ended(){return ended}};
 }
 const ok=body=>({status:200,body});const error=(status,code)=>({status,body:{code,message:code}});

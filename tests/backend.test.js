@@ -66,6 +66,7 @@ function bookingRow() {
 }
 
 vm.createContext(context);
+vm.runInContext(fs.readFileSync("app/src/main/assets/session-store.js", "utf8"), context);
 vm.runInContext(fs.readFileSync("app/src/main/assets/backend.js", "utf8"), context);
 const Backend = context.window.CleanThingsBackend;
 

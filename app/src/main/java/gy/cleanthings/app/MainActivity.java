@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.Window;
@@ -26,6 +27,7 @@ public class MainActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST = 4102;
     private static final int LOCATION_PERMISSION_REQUEST = 4103;
     private WebView webView;
+    private SessionVault sessionVault;
     private ValueCallback<Uri[]> pendingFileCallback;
     private String pendingGeolocationOrigin;
     private GeolocationPermissions.Callback pendingGeolocationCallback;
@@ -39,6 +41,8 @@ public class MainActivity extends Activity {
         window.setNavigationBarColor(Color.WHITE);
 
         webView = new WebView(this);
+        sessionVault = new SessionVault(this);
+        webView.addJavascriptInterface(sessionVault, "CleanThingsNativeSession");
         setContentView(webView);
 
         WebSettings settings = webView.getSettings();
@@ -55,13 +59,22 @@ public class MainActivity extends Activity {
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
+            public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                sessionVault.setTrustedDocument(isTrustedDocument(Uri.parse(url)));
+            }
+
+            @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
+                // The bridge must never coexist with a remote or alternate main document.
+                if (request.isForMainFrame() && !isTrustedDocument(uri)) {
+                    return new WebResourceResponse("text/plain", "UTF-8", 403, "Forbidden", null, new ByteArrayInputStream(new byte[0]));
+                }
                 if (!APP_HOST.equals(uri.getHost())) return null;
                 String path = uri.getPath();
                 String file = path != null && path.startsWith("/assets/") ? path.substring(8) : "";
                 String mime = file.endsWith(".html") ? "text/html" : file.endsWith(".js") ? "application/javascript" : file.endsWith(".css") ? "text/css" : "image/png";
-                if (isAppOrigin(uri) && "GET".equals(request.getMethod()) && file.matches("(index\\.html|app\\.js|backend\\.js|core\\.js|config\\.js|pull-refresh\\.js|styles\\.css|logo\\.png)")) {
+                if (isAppOrigin(uri) && "GET".equals(request.getMethod()) && file.matches("(index\\.html|app\\.js|backend\\.js|core\\.js|config\\.js|session-store\\.js|pull-refresh\\.js|styles\\.css|logo\\.png)")) {
                     try { return new WebResourceResponse(mime, "UTF-8", getAssets().open(file)); }
                     catch (IOException ignored) { /* return a local 404 below */ }
                 }
@@ -137,7 +150,8 @@ public class MainActivity extends Activity {
 
     private boolean openExternalUrl(Uri uri) {
         String scheme = uri.getScheme();
-        if (isAppOrigin(uri)) return false;
+        if (isTrustedDocument(uri)) return false;
+        if (APP_HOST.equals(uri.getHost())) return true;
         if (!("https".equalsIgnoreCase(scheme) || "http".equalsIgnoreCase(scheme) || "mailto".equalsIgnoreCase(scheme))) return true;
         try {
             startActivity(new Intent(Intent.ACTION_VIEW, uri));
@@ -149,6 +163,10 @@ public class MainActivity extends Activity {
 
     private boolean isAppOrigin(Uri uri) {
         return "https".equalsIgnoreCase(uri.getScheme()) && APP_HOST.equals(uri.getHost()) && (uri.getPort() == -1 || uri.getPort() == 443);
+    }
+
+    private boolean isTrustedDocument(Uri uri) {
+        return isAppOrigin(uri) && "/assets/index.html".equals(uri.getPath()) && uri.getQuery() == null;
     }
 
     @Override
@@ -212,7 +230,9 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (sessionVault != null) sessionVault.setTrustedDocument(false);
         if (webView != null) {
+            webView.removeJavascriptInterface("CleanThingsNativeSession");
             webView.destroy();
         }
         super.onDestroy();
