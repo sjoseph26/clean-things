@@ -90,11 +90,13 @@ async function inspect(page,name,width,theme,screenshot=false){
   await page.locator('#vehicle').fill('Test vehicle');await page.locator('#plate').fill('TEST-001');await page.locator('#notes').fill('Preserve this note');await page.locator('[name=waterConfirmed]').check();await page.locator('[data-action=choose-current-location]').click();await page.getByText('Current location found.',{exact:false}).waitFor();
   const before=await page.locator('#map-latitude').inputValue();await page.locator('[aria-label="Zoom in"]').click();assert.equal(await page.locator('#map-latitude').inputValue(),before);await inspect(page,'map',width,theme,true);await page.locator('[data-map-save]').click();assert.equal(await page.locator('#notes').inputValue(),'Preserve this note');await inspect(page,'details',width,theme);
   await page.locator('#details-form [type=submit]').click();await page.locator('#confirm-accuracy').check();await inspect(page,'review',width,theme);const submitStart=performance.now();await page.locator('[data-action=confirm-booking]').click();await page.getByRole('heading',{name:'Booking request sent'}).waitFor();const submitMs=performance.now()-submitStart;await inspect(page,'success',width,theme);
-  await page.locator('[data-action=pay-booking]').first().click();await inspect(page,'payment',width,theme,true);await page.locator('#payment-proof').setInputFiles({name:'proof.png',mimeType:'image/png',buffer:png});await page.locator('#payment-form [type=submit]').click();await page.getByText('Pending review',{exact:true}).waitFor();assert.equal(uploadBytes,png.length);
+  await page.locator('[data-action=pay-booking]').first().click();await inspect(page,'payment',width,theme,true);await page.locator('#payment-proof').setInputFiles({name:'proof.png',mimeType:'image/png',buffer:png});assert.equal(await page.locator('#payment-proof-selection').textContent(),'Selected: proof.png');await page.locator('#payment-form [type=submit]').click();await page.getByText('Pending review',{exact:true}).waitFor();assert.equal(uploadBytes,png.length);
   await inspect(page,'bookings',width,theme);
   // Separate privileged fixture sign-in; server-role enforcement is tested in database.test.cjs.
   await page.locator('[data-screen=account]').click();await page.locator('[data-action=customer-logout]').click();admin=true;
   await page.locator('#customer-email').fill('admin@example.test');await page.locator('#customer-password').fill(fixturePassword);await page.locator('#customer-login-form [type=submit]').click();await page.getByRole('heading',{name:'Business overview'}).waitFor();await inspect(page,'admin',width,theme,true);
+  await page.getByRole('button',{name:'Switch to customer view',exact:true}).click();await page.getByRole('button',{name:'Switch to admin view',exact:true}).waitFor();await inspect(page,'customer-view-switch',width,theme,true);
+  await page.getByRole('button',{name:'Switch to admin view',exact:true}).click();await page.getByRole('heading',{name:'Business overview'}).waitFor();
   await page.locator('[data-tab=bookings]').first().click();await inspect(page,'admin-bookings',width,theme,true);
   await page.locator('#admin-booking-month').fill('2099-01');assert.equal(await page.locator('.admin-record').count(),0);
   await page.locator('#clear-booking-month').click();assert.equal(await page.locator('.admin-record').count(),1);
@@ -107,6 +109,8 @@ async function inspect(page,name,width,theme,screenshot=false){
   await inspect(page,'admin-addons',width,theme,true);
   assert.equal(await page.evaluate(()=>window.CleanThingsHandleBack()),true);assert.equal(await page.locator('[role=dialog]').count(),0);
   await page.locator('[data-tab=schedule]').click();await page.locator('#admin-date').waitFor();await inspect(page,'admin-schedule',width,theme);
+  await page.locator('#admin-date').fill('2099-10-03');await page.locator('.schedule-slot-admin[data-time="21:00"]').waitFor();assert.equal(await page.locator('.schedule-slot-admin').count(),10);await inspect(page,'weekend-evening-hours',width,theme,true);
+  await page.locator('#admin-date').fill('2099-10-05');await page.locator('.schedule-slot-admin[data-time="21:00"]').waitFor({state:'detached'});assert.equal(await page.locator('.schedule-slot-admin').count(),8);assert.equal(await page.locator('.schedule-slot-admin[data-time="19:00"]').count(),1);
   await page.locator('[data-tab=more]').click();await page.locator('[data-tab=settings]').click();await inspect(page,'admin-settings',width,theme);
   results.push({name:'local-mocked-timing',width,theme,homeMs:Number(homeMs.toFixed(1)),submitMs:Number(submitMs.toFixed(1))});
   await context.close();

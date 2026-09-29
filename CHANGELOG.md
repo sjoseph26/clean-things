@@ -1,5 +1,13 @@
 # Change log
 
+## 0.6.9 Randy tester feedback — 29 September 2026
+
+- Prepare a targeted private payment-proof bucket, image-linking field/RPC and owner/admin storage policies; live application awaits confirmation.
+- Extend offered appointment starts to 7 pm weekdays and 9 pm Saturday/Sunday, including admin edits and day closures.
+- Order admin bookings and pending items newest-first by creation time.
+- Provide a top-right Customer/Admin switch without changing role or ending the session.
+- Show the selected proof filename immediately. Android version code 21, based on v0.6.2 tester branch; staged MFA and biometric features remain separate.
+
 ## 0.6.1 - 29 September 2026
 
 - Replace the large refresh button with pull-to-refresh on live browsing screens.

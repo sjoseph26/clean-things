@@ -53,14 +53,7 @@
     }
   ];
 
-  const defaultSlots = [
-    { value: "08:30", label: "8:30 AM" },
-    { value: "10:00", label: "10:00 AM" },
-    { value: "11:30", label: "11:30 AM" },
-    { value: "13:00", label: "1:00 PM" },
-    { value: "14:30", label: "2:30 PM" },
-    { value: "16:00", label: "4:00 PM" }
-  ];
+  const defaultSlots = Core.appointmentSlots();
 
   const topbar = document.getElementById("topbar");
   const main = document.getElementById("app-main");
@@ -429,6 +422,7 @@
 
   function isSlotUnavailable(date, time, ignoreReference) {
     if (!ignoreReference && isLive() && (ui.availabilityDate !== date || ui.availabilityLoading || ui.availabilityError)) return true;
+    if (!Core.appointmentSlots(date).some(function (slot) { return slot.value === time; })) return true;
     if (state.schedule.closedDates.indexOf(date) >= 0) return true;
     if (state.schedule.blockedSlots.indexOf(slotKey(date, time)) >= 0) return true;
     if (!ignoreReference && (state.schedule.occupiedSlots || []).indexOf(slotKey(date, time)) >= 0) return true;
@@ -489,8 +483,9 @@
   }
 
   function formatTime(value) {
-    const slot = availableSlots.find(function (item) { return item.value === value; });
-    return slot ? slot.label : (value || "Not set");
+    if (!/^\d{2}:\d{2}$/.test(value || "")) return value || "Not set";
+    const parts = value.split(":"); const hour = Number(parts[0]);
+    return (hour % 12 || 12) + ":" + parts[1] + (hour < 12 ? " AM" : " PM");
   }
 
   function statusBadge(status) {
@@ -534,12 +529,14 @@
       account: ["My account", "Profile, preferences & access"],
       admin: ["Admin Management", isLive() ? "Full business control" : "Full prototype control"]
     };
+    const admin = currentAccount() && currentAccount().role === "admin";
+    const switchButton = admin ? '<button class="header-btn view-switch" data-action="' + (ui.screen === 'admin' ? 'customer-view' : 'open-management') + '" aria-label="' + (ui.screen === 'admin' ? 'Switch to customer view' : 'Switch to admin view') + '">⇄ <span>' + (ui.screen === 'admin' ? 'Customer' : 'Admin') + '</span></button>' : '';
     if (ui.screen === "home") {
-      topbar.innerHTML = '<div class="brand-lockup"><img src="logo.png" alt=""><div><h1>Clean Things</h1><span class="topbar-sub">Booking & service management</span></div></div><button class="header-btn" data-action="info" aria-label="About Clean Things">ⓘ</button>';
+      topbar.innerHTML = '<div class="brand-lockup"><img src="logo.png" alt=""><div><h1>Clean Things</h1><span class="topbar-sub">Booking & service management</span></div></div>' + (switchButton || '<button class="header-btn" data-action="info" aria-label="About Clean Things">ⓘ</button>');
       return;
     }
     const title = titles[ui.screen] || ["Clean Things", isLive() ? "Mobile service app" : "Mobile prototype"];
-    topbar.innerHTML = '<div><h1>' + title[0] + '</h1><span class="topbar-sub">' + title[1] + '</span></div><button class="header-btn" data-action="home" aria-label="Go to home">⌂</button>';
+    topbar.innerHTML = '<div><h1>' + title[0] + '</h1><span class="topbar-sub">' + title[1] + '</span></div>' + (switchButton || '<button class="header-btn" data-action="home" aria-label="Go to home">⌂</button>');
   }
 
   function renderBottomNav() {
@@ -629,7 +626,7 @@
       '<label class="choice-card"><input type="radio" name="mode" data-role="mode-choice" value="bay" ' + (ui.draft.serviceMode === "bay" ? "checked" : "") + '><span class="choice-body"><span class="choice-title"><span>🏁 Wash bay</span><span>No travel</span></span><span class="choice-copy">Bring the vehicle to the Clean Things wash bay.</span></span></label>' +
       '<label class="choice-card"><input type="radio" name="mode" data-role="mode-choice" value="mobile" ' + (ui.draft.serviceMode === "mobile" ? "checked" : "") + '><span class="choice-body"><span class="choice-title"><span>📍 On-location</span><span>We travel</span></span><span class="choice-copy">Clean Things brings the equipment. You provide a suitable water source.</span></span></label>' +
       '<div class="field"><label for="booking-date">Appointment date</label><input id="booking-date" type="date" min="' + dateFromNow(1) + '" value="' + ui.draft.date + '"></div>' +
-      '<div class="field"><label>Available times</label><div class="slot-grid">' + availableSlots.map(function (slot) {
+      '<div class="field"><label>Available times</label><div class="slot-grid">' + Core.appointmentSlots(ui.draft.date).map(function (slot) {
         const unavailable = isSlotUnavailable(ui.draft.date, slot.value);
         return '<button type="button" class="slot ' + (ui.draft.time === slot.value ? "selected" : "") + ' ' + (unavailable ? "unavailable" : "") + '" data-action="select-slot" data-time="' + slot.value + '" ' + (unavailable ? 'disabled aria-label="' + Core.safeText(slot.label) + ' unavailable"' : "") + '>' + slot.label + '</button>';
       }).join("") + '</div><span id="schedule-error" class="field-error"></span></div>' +
@@ -706,7 +703,7 @@
     ui.selectedBookingRef = booking.reference;
     if (booking.payment.status === "Paid" || ["Cancelled", "Completed"].includes(booking.status)) return '<div class="page"><div class="info-callout">Payment submission is closed for this booking.</div><button class="btn btn-secondary" data-action="nav" data-screen="bookings">Back to bookings</button></div>';
     const details = mmgDetails();
-    return '<div class="page"><div class="card"><div class="status-line"><span class="booking-ref">' + Core.safeText(booking.reference) + '</span>' + statusBadge(booking.payment.status) + '</div><h3>' + Core.safeText(booking.serviceName) + '</h3><div class="summary-row total-row"><span>Amount due</span><strong>' + Core.money(booking.total) + '</strong></div></div><div class="card"><div class="status-line"><h3>MMG payment details</h3>' + (isLive() ? '' : '<span class="badge demo">Fictional</span>') + '</div>' + summaryRow("Account name", details.accountName) + summaryRow("MMG number", details.number) + summaryRow("Payment note", booking.reference) + '<p class="meta" style="margin-top:10px">' + details.note + '</p><button class="btn btn-secondary btn-small" style="margin-top:12px" data-action="copy-mmg" data-reference="' + Core.safeText(booking.reference) + '">Copy payment note</button></div><form id="payment-form" class="card" novalidate><h3>Submit payment evidence</h3><p class="meta" style="margin-bottom:15px">Enter a reference or select an image. Connected accounts can upload a JPEG, PNG or WebP image up to 3 MB.</p><div class="field"><label for="payment-reference">MMG reference</label><input id="payment-reference" name="reference" autocomplete="off" value="' + Core.safeText(booking.payment.reference || "") + '" placeholder="e.g. MMG-DEMO-123"></div><div class="field"><label for="payment-proof">Proof image <span class="meta">(optional)</span></label><input id="payment-proof" name="proof" type="file" accept="image/jpeg,image/png,image/webp"><span class="field-hint">Current: ' + Core.safeText(booking.payment.proofName || "No image selected") + '</span></div><span id="payment-error" class="field-error"></span><button class="btn btn-primary btn-block" type="submit">Submit for admin review</button></form></div>';
+    return '<div class="page"><div class="card"><div class="status-line"><span class="booking-ref">' + Core.safeText(booking.reference) + '</span>' + statusBadge(booking.payment.status) + '</div><h3>' + Core.safeText(booking.serviceName) + '</h3><div class="summary-row total-row"><span>Amount due</span><strong>' + Core.money(booking.total) + '</strong></div></div><div class="card"><div class="status-line"><h3>MMG payment details</h3>' + (isLive() ? '' : '<span class="badge demo">Fictional</span>') + '</div>' + summaryRow("Account name", details.accountName) + summaryRow("MMG number", details.number) + summaryRow("Payment note", booking.reference) + '<p class="meta" style="margin-top:10px">' + details.note + '</p><button class="btn btn-secondary btn-small" style="margin-top:12px" data-action="copy-mmg" data-reference="' + Core.safeText(booking.reference) + '">Copy payment note</button></div><form id="payment-form" class="card" novalidate><h3>Submit payment evidence</h3><p class="meta" style="margin-bottom:15px">Enter a reference or select an image. Connected accounts can upload a JPEG, PNG or WebP image up to 3 MB.</p><div class="field"><label for="payment-reference">MMG reference</label><input id="payment-reference" name="reference" autocomplete="off" value="' + Core.safeText(booking.payment.reference || "") + '" placeholder="e.g. MMG-DEMO-123"></div><div class="field"><label for="payment-proof">Proof image <span class="meta">(optional)</span></label><input id="payment-proof" name="proof" type="file" accept="image/jpeg,image/png,image/webp"><span id="payment-proof-selection" class="field-hint">Submitted: ' + Core.safeText(booking.payment.proofName || "No image selected") + '</span></div><span id="payment-error" class="field-error"></span><button class="btn btn-primary btn-block" type="submit">Submit for admin review</button></form></div>';
   }
 
   function renderAccount() {
@@ -750,12 +747,12 @@
     const payments = state.bookings.filter(function (b) { return b.payment.status === "Pending review"; }).length;
     const revenue = state.bookings.filter(function (b) { return b.payment.status === "Paid"; }).reduce(function (sum, b) { return sum + Number(b.total || 0); }, 0);
     const upcoming = state.bookings.filter(function (b) { return b.status !== "Cancelled" && b.status !== "Completed"; }).length;
-    return '<div class="admin-title-row"><div><p class="eyebrow admin-eyebrow">Control centre</p><h2>Business overview</h2><p>Manage the full ' + (isLive() ? "business" : "prototype") + ' from one place.</p></div><button class="btn btn-ghost btn-small" data-action="admin-logout">Sign out</button></div><div class="admin-metrics"><button data-action="admin-tab" data-tab="bookings"><span>Awaiting</span><strong>' + pending + '</strong><small>Confirmations</small></button><button data-action="admin-tab" data-tab="schedule"><span>Upcoming</span><strong>' + upcoming + '</strong><small>Bookings</small></button><button data-action="admin-tab" data-tab="payments"><span>Review</span><strong>' + payments + '</strong><small>Payments</small></button><button><span>Paid revenue</span><strong class="metric-money">' + Core.money(revenue) + '</strong><small>' + (isLive() ? "Recorded total" : "Prototype total") + '</small></button></div><div class="section-head"><div><h3>Quick management</h3><p>Common admin tasks</p></div></div><div class="admin-action-grid"><button data-action="admin-tab" data-tab="bookings"><span>▣</span><strong>Manage bookings</strong><small>Edit, confirm or cancel</small></button><button data-action="admin-tab" data-tab="schedule"><span>▦</span><strong>Adjust schedule</strong><small>Open or block time slots</small></button><button data-action="admin-tab" data-tab="services"><span>✦</span><strong>Edit services</strong><small>Prices, add-ons and visibility</small></button><button data-action="admin-tab" data-tab="customers"><span>♙</span><strong>View customers</strong><small>Profiles and history</small></button><button data-action="open-walkin"><span>＋</span><strong>Add walk-in</strong><small>Record a paid service</small></button></div><div class="section-head"><div><h3>Needs attention</h3><p>Most recent pending records</p></div></div>' + (state.bookings.filter(function (b) { return b.status === "Pending confirmation" || b.payment.status === "Pending review"; }).slice(-3).reverse().map(adminBookingCard).join("") || '<div class="empty"><div class="empty-icon">✓</div><h3>All caught up</h3><p>No bookings or payments need attention.</p></div>');
+    return '<div class="admin-title-row"><div><p class="eyebrow admin-eyebrow">Control centre</p><h2>Business overview</h2><p>Manage the full ' + (isLive() ? "business" : "prototype") + ' from one place.</p></div><button class="btn btn-ghost btn-small" data-action="admin-logout">Sign out</button></div><div class="admin-metrics"><button data-action="admin-tab" data-tab="bookings"><span>Awaiting</span><strong>' + pending + '</strong><small>Confirmations</small></button><button data-action="admin-tab" data-tab="schedule"><span>Upcoming</span><strong>' + upcoming + '</strong><small>Bookings</small></button><button data-action="admin-tab" data-tab="payments"><span>Review</span><strong>' + payments + '</strong><small>Payments</small></button><button><span>Paid revenue</span><strong class="metric-money">' + Core.money(revenue) + '</strong><small>' + (isLive() ? "Recorded total" : "Prototype total") + '</small></button></div><div class="section-head"><div><h3>Quick management</h3><p>Common admin tasks</p></div></div><div class="admin-action-grid"><button data-action="admin-tab" data-tab="bookings"><span>▣</span><strong>Manage bookings</strong><small>Edit, confirm or cancel</small></button><button data-action="admin-tab" data-tab="schedule"><span>▦</span><strong>Adjust schedule</strong><small>Open or block time slots</small></button><button data-action="admin-tab" data-tab="services"><span>✦</span><strong>Edit services</strong><small>Prices, add-ons and visibility</small></button><button data-action="admin-tab" data-tab="customers"><span>♙</span><strong>View customers</strong><small>Profiles and history</small></button><button data-action="open-walkin"><span>＋</span><strong>Add walk-in</strong><small>Record a paid service</small></button></div><div class="section-head"><div><h3>Needs attention</h3><p>Most recent pending records</p></div></div>' + (Core.newestBookings(state.bookings.filter(function (b) { return b.status === "Pending confirmation" || b.payment.status === "Pending review"; })).slice(0, 3).map(adminBookingCard).join("") || '<div class="empty"><div class="empty-icon">✓</div><h3>All caught up</h3><p>No bookings or payments need attention.</p></div>');
   }
 
   function adminBookings() {
     const query = ui.adminSearch.toLowerCase();
-    const records = state.bookings.slice().reverse().filter(function (booking) {
+    const records = Core.newestBookings(state.bookings).filter(function (booking) {
       const matchesText = !query || [booking.reference, booking.name, booking.phone, booking.vehicle, booking.plate].join(" ").toLowerCase().indexOf(query) >= 0;
       const matchesStatus = ui.adminStatus === "All" || booking.status === ui.adminStatus;
       let recordMonth = String(booking.date || "").slice(0, 7);
@@ -778,7 +775,7 @@
     const date = ui.adminDate;
     const closed = state.schedule.closedDates.indexOf(date) >= 0;
     const dayBookings = state.bookings.filter(function (b) { return b.date === date && b.status !== "Cancelled"; });
-    return '<div class="admin-section-head"><div><h2>Schedule</h2><p>Open or block appointment availability</p></div></div><div class="card"><div class="field"><label for="admin-date">Manage date</label><input id="admin-date" type="date" value="' + date + '"></div><button class="btn ' + (closed ? "btn-secondary" : "btn-danger") + ' btn-block" data-action="toggle-day" ' + (!closed && dayBookings.length ? "disabled" : "") + '>' + (closed ? "Open this day" : dayBookings.length ? "Move or cancel bookings before closing" : "Close this entire day") + '</button></div><div class="section-head"><div><h3>Time slots</h3><p>' + dayBookings.length + ' active booking(s) on this date</p></div></div><div class="schedule-admin-grid">' + availableSlots.map(function (slot) { const booked = dayBookings.find(function (b) { return b.time === slot.value; }); const blocked = state.schedule.blockedSlots.indexOf(slotKey(date, slot.value)) >= 0; return '<button class="schedule-slot-admin ' + (closed || blocked ? "blocked" : booked ? "booked" : "open") + '" data-action="toggle-admin-slot" data-time="' + slot.value + '" ' + (booked ? "disabled" : "") + '><strong>' + slot.label + '</strong><span>' + (closed ? "Day closed" : booked ? Core.safeText(booked.name) : blocked ? "Blocked" : "Open") + '</span></button>'; }).join("") + '</div><div class="info-callout"><strong>How it works:</strong> Booked slots cannot be blocked until the booking is moved or cancelled. Changes immediately affect customer availability' + (isLive() ? " across connected devices" : " on this device") + '.</div>';
+    return '<div class="admin-section-head"><div><h2>Schedule</h2><p>Open or block appointment availability</p></div></div><div class="card"><div class="field"><label for="admin-date">Manage date</label><input id="admin-date" type="date" value="' + date + '"></div><button class="btn ' + (closed ? "btn-secondary" : "btn-danger") + ' btn-block" data-action="toggle-day" ' + (!closed && dayBookings.length ? "disabled" : "") + '>' + (closed ? "Open this day" : dayBookings.length ? "Move or cancel bookings before closing" : "Close this entire day") + '</button></div><div class="section-head"><div><h3>Time slots</h3><p>' + dayBookings.length + ' active booking(s) on this date</p></div></div><div class="schedule-admin-grid">' + Core.appointmentSlots(date).map(function (slot) { const booked = dayBookings.find(function (b) { return b.time === slot.value; }); const blocked = state.schedule.blockedSlots.indexOf(slotKey(date, slot.value)) >= 0; return '<button class="schedule-slot-admin ' + (closed || blocked ? "blocked" : booked ? "booked" : "open") + '" data-action="toggle-admin-slot" data-time="' + slot.value + '" ' + (booked ? "disabled" : "") + '><strong>' + slot.label + '</strong><span>' + (closed ? "Day closed" : booked ? Core.safeText(booked.name) : blocked ? "Blocked" : "Open") + '</span></button>'; }).join("") + '</div><div class="info-callout"><strong>How it works:</strong> Booked slots cannot be blocked until the booking is moved or cancelled. Changes immediately affect customer availability' + (isLive() ? " across connected devices" : " on this device") + '.</div>';
   }
 
   function customerRecords() {
@@ -872,6 +869,8 @@
     if (detailsForm) detailsForm.addEventListener("submit", submitDetails);
     const paymentForm = document.getElementById("payment-form");
     if (paymentForm) paymentForm.addEventListener("submit", submitPayment);
+    const proofInput = document.getElementById("payment-proof");
+    if (proofInput) proofInput.addEventListener("change", function () { const selected = proofInput.files && proofInput.files[0]; document.getElementById("payment-proof-selection").textContent = selected ? "Selected: " + selected.name : "No new image selected"; });
     const customerLogin = document.getElementById("customer-login-form");
     if (customerLogin) customerLogin.addEventListener("submit", submitCustomerLogin);
     const customerCreate = document.getElementById("customer-create-form");
@@ -911,7 +910,7 @@
       if (row.status === "blocked") state.schedule.blockedSlots.push(slotKey(date, String(row.service_time).slice(0, 5)));
       if (row.status === "booked") state.schedule.occupiedSlots.push(slotKey(date, String(row.service_time).slice(0, 5)));
     });
-    const allBlocked = availableSlots.every(function (slot) { return state.schedule.blockedSlots.indexOf(slotKey(date, slot.value)) >= 0; });
+    const allBlocked = Core.appointmentSlots(date).length > 0 && Core.appointmentSlots(date).every(function (slot) { return state.schedule.blockedSlots.indexOf(slotKey(date, slot.value)) >= 0; });
     state.schedule.closedDates = state.schedule.closedDates.filter(function (item) { return item !== date; });
     if (allBlocked) state.schedule.closedDates.push(date);
     saveState();
@@ -1232,7 +1231,13 @@
     const original = bookingByRef(reference);
     const booking = original ? JSON.parse(JSON.stringify(original)) : null;
     if (!booking) return;
-    openModal("Edit booking", '<form id="edit-booking-form"><div class="field"><label>Customer</label><input name="name" value="' + Core.safeText(booking.name) + '"></div><div class="field"><label>Telephone</label><input name="phone" type="tel" value="' + Core.safeText(booking.phone) + '"></div><div class="field"><label>Service</label><select name="serviceId">' + services.map(function (service) { return '<option value="' + Core.safeText(service.id) + '" ' + (booking.serviceId === service.id ? "selected" : "") + '>' + Core.safeText(service.name) + '</option>'; }).join("") + '</select></div><div class="form-grid"><div class="field"><label>Date</label><input name="date" type="date" value="' + Core.safeText(booking.date || dateFromNow(1)) + '"></div><div class="field"><label>Time</label><select name="time">' + availableSlots.map(function (slot) { return '<option value="' + slot.value + '" ' + (booking.time === slot.value ? "selected" : "") + '>' + slot.label + '</option>'; }).join("") + '</select></div></div><div class="form-grid"><div class="field"><label>Status</label><select name="status">' + ["Pending confirmation", "Confirmed", "Completed", "Cancelled"].map(function (status) { return '<option ' + (booking.status === status ? "selected" : "") + '>' + status + '</option>'; }).join("") + '</select></div><div class="field"><label>Total (GYD)</label><input name="total" type="number" min="0" value="' + Number(booking.total || 0) + '"></div></div><div class="field"><label>Admin notes</label><textarea name="notes">' + Core.safeText(booking.notes || "") + '</textarea></div><span id="edit-booking-error" class="field-error"></span><button class="btn btn-admin btn-block" type="submit">Save booking changes</button></form>');
+    openModal("Edit booking", '<form id="edit-booking-form"><div class="field"><label>Customer</label><input name="name" value="' + Core.safeText(booking.name) + '"></div><div class="field"><label>Telephone</label><input name="phone" type="tel" value="' + Core.safeText(booking.phone) + '"></div><div class="field"><label>Service</label><select name="serviceId">' + services.map(function (service) { return '<option value="' + Core.safeText(service.id) + '" ' + (booking.serviceId === service.id ? "selected" : "") + '>' + Core.safeText(service.name) + '</option>'; }).join("") + '</select></div><div class="form-grid"><div class="field"><label>Date</label><input name="date" type="date" value="' + Core.safeText(booking.date || dateFromNow(1)) + '"></div><div class="field"><label>Time</label><select name="time">' + Core.appointmentSlots(booking.date || dateFromNow(1)).map(function (slot) { return '<option value="' + slot.value + '" ' + (booking.time === slot.value ? "selected" : "") + '>' + slot.label + '</option>'; }).join("") + '</select></div></div><div class="form-grid"><div class="field"><label>Status</label><select name="status">' + ["Pending confirmation", "Confirmed", "Completed", "Cancelled"].map(function (status) { return '<option ' + (booking.status === status ? "selected" : "") + '>' + status + '</option>'; }).join("") + '</select></div><div class="field"><label>Total (GYD)</label><input name="total" type="number" min="0" value="' + Number(booking.total || 0) + '"></div></div><div class="field"><label>Admin notes</label><textarea name="notes">' + Core.safeText(booking.notes || "") + '</textarea></div><span id="edit-booking-error" class="field-error"></span><button class="btn btn-admin btn-block" type="submit">Save booking changes</button></form>');
+    const editForm = document.getElementById("edit-booking-form");
+    editForm.querySelector('[name="date"]').addEventListener('change', function (event) {
+      const time = editForm.querySelector('[name="time"]'); const previous = time.value;
+      time.innerHTML = '<option value="">Choose a time</option>' + Core.appointmentSlots(event.target.value).map(function (slot) { return '<option value="' + slot.value + '">' + slot.label + '</option>'; }).join('');
+      time.value = Core.appointmentSlots(event.target.value).some(function (slot) { return slot.value === previous; }) ? previous : '';
+    });
     document.getElementById("edit-booking-form").addEventListener("submit", async function (event) {
       event.preventDefault(); const data = new FormData(event.currentTarget); const date = String(data.get("date")); const time = String(data.get("time"));
       if (isSlotUnavailable(date, time, booking.reference) && String(data.get("status")) !== "Cancelled") { document.getElementById("edit-booking-error").textContent = "That time is blocked or already booked."; return; }
@@ -1562,6 +1567,7 @@
     try {
     if (action === "nav") navigate(button.dataset.screen);
     else if (action === "home") navigate("home");
+    else if (action === "customer-view" && currentAccount() && currentAccount().role === "admin") navigate("home");
     else if (action === "info") showAbout();
     else if (action === "start-booking") beginBooking("");
     else if (action === "book-service") { closeModal(); beginBooking(button.dataset.service); }
@@ -1682,7 +1688,7 @@
     else if (action === "edit-booking") openEditBooking(button.dataset.reference);
     else if (action === "delete-booking") confirmDeleteBooking(button.dataset.reference);
     else if (action === "confirm-delete-booking") { if (isLive()) { try { await Backend.deleteBooking(button.dataset.reference); } catch (error) { showToast("Delete failed: " + error.message); return; } } state.bookings = state.bookings.filter(function (booking) { return booking.reference !== button.dataset.reference; }); state.receipts = state.receipts.filter(function (receipt) { return receipt.bookingReference !== button.dataset.reference; }); saveState(); closeModal(); render(); showToast("Booking deleted."); }
-    else if (action === "toggle-day") { const index = state.schedule.closedDates.indexOf(ui.adminDate); const nextStatus = index >= 0 ? "open" : "blocked"; if (isLive()) { try { await Backend.setDayAvailability(ui.adminDate, nextStatus); } catch (error) { showToast("Schedule update failed: " + error.message); return; } } if (index >= 0) { state.schedule.closedDates.splice(index, 1); state.schedule.blockedSlots = state.schedule.blockedSlots.filter(function (key) { return !key.startsWith(ui.adminDate + "|"); }); } else { state.schedule.closedDates.push(ui.adminDate); availableSlots.forEach(function (slot) { const key = slotKey(ui.adminDate, slot.value); if (state.schedule.blockedSlots.indexOf(key) < 0) state.schedule.blockedSlots.push(key); }); } persistAndRender(index >= 0 ? "Day opened." : "Day closed."); }
+    else if (action === "toggle-day") { const index = state.schedule.closedDates.indexOf(ui.adminDate); const nextStatus = index >= 0 ? "open" : "blocked"; if (isLive()) { try { await Backend.setDayAvailability(ui.adminDate, nextStatus); } catch (error) { showToast("Schedule update failed: " + error.message); return; } } if (index >= 0) { state.schedule.closedDates.splice(index, 1); state.schedule.blockedSlots = state.schedule.blockedSlots.filter(function (key) { return !key.startsWith(ui.adminDate + "|"); }); } else { state.schedule.closedDates.push(ui.adminDate); Core.appointmentSlots(ui.adminDate).forEach(function (slot) { const key = slotKey(ui.adminDate, slot.value); if (state.schedule.blockedSlots.indexOf(key) < 0) state.schedule.blockedSlots.push(key); }); } persistAndRender(index >= 0 ? "Day opened." : "Day closed."); }
     else if (action === "toggle-admin-slot") { const key = slotKey(ui.adminDate, button.dataset.time); const index = state.schedule.blockedSlots.indexOf(key); if (isLive()) { try { await Backend.setAvailability(ui.adminDate, button.dataset.time, index >= 0 ? "open" : "blocked"); } catch (error) { showToast("Schedule update failed: " + error.message); return; } } if (index >= 0) state.schedule.blockedSlots.splice(index, 1); else state.schedule.blockedSlots.push(key); state.schedule.closedDates = state.schedule.closedDates.filter(function (date) { return date !== ui.adminDate; }); persistAndRender(index >= 0 ? "Time slot opened." : "Time slot blocked."); }
     else if (action === "edit-customer") openEditCustomer(button.dataset.phone);
     else if (action === "add-service") openServiceEditor(null);

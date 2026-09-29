@@ -5,6 +5,21 @@
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
 
+  function appointmentSlots(date) {
+    const day = date ? new Date(date + "T12:00:00Z").getUTCDay() : 1;
+    if (date && (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(day))) return [];
+    const times = ["08:30", "10:00", "11:30", "13:00", "14:30", "16:00", "17:30", "19:00"];
+    if (day === 0 || day === 6) times.push("20:00", "21:00");
+    return times.map(function (time) { const parts = time.split(":"); const hour = Number(parts[0]); return {value:time,label:(hour % 12 || 12) + ":" + parts[1] + (hour < 12 ? " AM" : " PM")}; });
+  }
+
+  function newestBookings(records) {
+    return (records || []).slice().sort(function (a,b) {
+      const aTime = Date.parse(a.createdAt) || 0, bTime = Date.parse(b.createdAt) || 0;
+      return bTime - aTime || String(b.id || b.reference || "").localeCompare(String(a.id || a.reference || ""));
+    });
+  }
+
   function money(value) {
     return "GYD " + Number(value || 0).toLocaleString("en-US");
   }
@@ -85,6 +100,8 @@
   }
 
   return {
+    appointmentSlots: appointmentSlots,
+    newestBookings: newestBookings,
     money: money,
     calculateTotal: calculateTotal,
     validateBooking: validateBooking,

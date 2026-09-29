@@ -8,6 +8,7 @@ parser.add_argument('--package',action='store_true')
 args=parser.parse_args();root=args.root.resolve();errors=[]
 excluded={'.git','node_modules','build','dist','signing','test-results','__pycache__'}
 required=['README.md','CHANGELOG.md','package.json','package-lock.json','.gitignore','.github/workflows/verify.yml','build-apk.sh','app/src/main/assets/config.example.js','app/src/main/assets/app.js','app/src/main/assets/backend.js','app/src/main/assets/core.js','app/src/main/assets/styles.css','app/src/main/assets/index.html','app/src/main/AndroidManifest.xml','app/src/main/java/gy/cleanthings/app/MainActivity.java','scripts/configure.py','scripts/prepare_android.py','scripts/package_source.py','docs/GITHUB.md','docs/TEST-PLAN.md','docs/TRACEABILITY.md','docs/RELEASE-STATUS.md','docs/CONTRIBUTIONS.md','docs/evaluation/evaluator-1.md','docs/evaluation/evaluator-2.md','docs/evaluation/evaluator-3.md','supabase/migrations/202609210001_release_repairs.sql']
+required += ['supabase/migrations/202609290003_payment_schedule_hotfix.sql','tests/payment-schedule-hotfix.test.cjs','docs/RANDY-FEEDBACK-v0.6.9.md']
 for f in required:
  if not (root/f).is_file():errors.append('Missing '+f)
 files=[]

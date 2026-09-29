@@ -3,7 +3,7 @@
 from pathlib import Path
 import os,shutil,subprocess,sys,tempfile,zipfile
 root=Path(__file__).resolve().parents[1]
-output=Path(sys.argv[1]).resolve() if len(sys.argv)>1 else root/'dist/CleanThings-GitHub-Source-v0.6.2.zip'
+output=Path(sys.argv[1]).resolve() if len(sys.argv)>1 else root/'dist/CleanThings-GitHub-Source-v0.6.9.zip'
 excluded={'.git','node_modules','build','dist','signing','test-results','__pycache__'}
 with tempfile.TemporaryDirectory(prefix='cleanthings-package-') as work:
  stage=Path(work)/'CleanThings'

@@ -22,8 +22,8 @@ assert.ok(app.includes("mapState.zoom = 17"), "the GPS pin must zoom to a useful
 assert.ok(app.includes("function openLocationPicker(useCurrentLocation)"), "manual and GPS-centred map picker logic must be packaged");
 assert.ok(app.includes("https://tile.openstreetmap.org/"), "the map picker must load secure map tiles");
 assert.ok(app.includes("choose a point on the map"), "GPS failures must offer the manual fallback");
-assert.ok(build.includes('--version-code 14'), "the current repair must install as a newer Android build");
-assert.ok(build.includes('VERSION="0.6.2"'), 'build version must match the current release');
+assert.ok(build.includes('--version-code 21'), "the current repair must install as a newer Android build");
+assert.ok(build.includes('VERSION="0.6.9"'), 'build version must match the current release');
 assert.ok(activity.includes('https://') && activity.includes('isAppOrigin'), 'geolocation must be restricted to the app HTTPS origin');
 
 console.log("Native, GPS-centred pin and manual location tests passed.");

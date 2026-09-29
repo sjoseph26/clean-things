@@ -1,6 +1,8 @@
-# Clean Things v0.6.2
+# Clean Things v0.6.9
 
 Android booking and service-management prototype. This is a **repair candidate**, with local automated evidence and a reproducible native build. It is not certified as deployment-ready; the new database migration and live acceptance checks are still required.
+
+This is Randy’s tester update, based on v0.6.2. The database repair needs activation before payment-image and evening-hours acceptance. See [current status](docs/RANDY-FEEDBACK-v0.6.9.md). Biometric sign-in and staged MFA remain separate.
 
 ## Run the fictional demo
 
@@ -44,7 +46,7 @@ For an Android build, install JDK 17 and Android SDK platform 35/build-tools 35.
 bash build-apk.sh qa
 ```
 
-The output is `dist/CleanThings-qa-v0.6.2.apk`, a separate `gy.cleanthings.app.qa` app for fictional testing (Android 7+). The live variant requires the original signing key and connected configuration. See the deployment guide before building/installing it. Native version code: 14.
+The output is `dist/CleanThings-qa-v0.6.9.apk`, a separate `gy.cleanthings.app.qa` app for fictional testing (Android 7+). The live variant requires the original signing key and connected configuration. See the deployment guide before building/installing it. Native version code: 21.
 
 ## Project documentation
 

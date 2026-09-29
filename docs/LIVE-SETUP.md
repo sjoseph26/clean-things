@@ -1,4 +1,9 @@
-# Deployment and recovery guide - v0.6.2
+# Deployment and recovery guide - v0.6.9
+
+## v0.6.9 tester update
+
+This build addresses Randy's payment-image setup error, weekday/weekend evening hours, newest-first admin bookings and the Customer/Admin view switch. It is based on the v0.6.2 tester baseline; biometric login and staged MFA remain on their separate feature branch. The targeted database repair is prepared and locally tested, but awaits owner confirmation before live application. See [Randy feedback and acceptance](RANDY-FEEDBACK-v0.6.9.md).
+
 
 This guide describes the prepared candidate. No production database change or GitHub publication was performed during this repair.
 
