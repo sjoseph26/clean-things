@@ -200,43 +200,22 @@ test('MFA-UI-05 a verification response cannot unlock admin when server authoriz
  }finally{t.close()}
 });
 
-test('BIO-UI-01 locked startup reads no account data, hides navigation and keeps back navigation locked',async()=>{
- const bio={available:true,enabled:true,locked:true};const t=await setup({biometric:bio});try{
-  assert.equal(t.a.ui.screen,'unlock');assert.deepEqual(t.calls,[]);assert.equal(t.w.document.querySelector('#bottom-nav').textContent,'');
-  t.a.navigate('home');assert.equal(t.a.ui.screen,'unlock');assert.equal(t.a.currentAccount(),null);
-  assert.match(t.w.document.body.textContent,/Use password sign-in/);
- }finally{t.close()}
+
+test('BIO-UI-01 saved login never redirects active account into an app lock',async()=>{
+ const t=await setup({biometric:{available:true,enabled:true}});try{assert.notEqual(t.a.ui.screen,'unlock');assert.ok(t.calls.includes('profile'));t.a.navigate('account');assert.equal(t.w.document.querySelector('[data-action=biometric-lock]'),null);assert.ok(t.w.document.querySelector('[data-action=biometric-forget]'));}finally{t.close()}
 });
-test('BIO-UI-02 cancelled unlock stays locked and duplicate taps open only one prompt',async()=>{
- const bio={available:true,enabled:true,locked:true};const t=await setup({biometric:bio});try{
-  let rejectPrompt,count=0;t.backend.biometricAction=()=>{count++;return new Promise((_,reject)=>rejectPrompt=reject)};
-  const first=t.a.handleBiometric('unlock');await t.a.handleBiometric('unlock');assert.equal(count,1);
-  rejectPrompt(Error('Verification cancelled'));await first;assert.equal(t.a.currentAccount(),null);assert.equal(t.a.ui.screen,'unlock');assert.match(t.w.document.querySelector('#biometric-error').textContent,/cancelled/);
- }finally{t.close()}
+test('BIO-UI-02 cancellation leaves password form usable and duplicate taps open only one prompt',async()=>{
+ const t=await setup({guest:true,biometric:{available:true,enabled:true}});try{t.a.navigate('account');let reject,count=0;t.backend.signInWithBiometrics=()=>{count++;return new Promise((_,r)=>reject=r)};const p=t.a.handleBiometric('signin');await t.a.handleBiometric('signin');assert.equal(count,1);reject(Error('Cancelled'));await p;assert.ok(t.w.document.querySelector('#customer-login-form'));assert.match(t.w.document.querySelector('#biometric-signin-help').textContent,/Cancelled/);}finally{t.close()}
 });
-test('BIO-UI-03 restored admin still reaches the server MFA gate before any privileged records load',async()=>{
- const bio={available:true,enabled:true,locked:true};const t=await setup({biometric:bio,admin:true});try{
-  let reads=0;t.backend.biometricAction=async()=>{bio.locked=false};t.backend.adminMfaStatus=async()=>({enforced:true,required:true,verified:false});
-  t.backend.listBookings=t.backend.listProfiles=t.backend.listReceipts=async()=>{reads++;return []};
-  await t.a.handleBiometric('unlock');assert.equal(reads,0);assert.equal(t.a.currentAccount(),null);assert.equal(t.a.ui.screen,'mfa');assert.equal(t.a.ui.biometricResumePending,false);
- }finally{t.close()}
+test('BIO-UI-03 biometric account login retains server MFA gate before privileged reads',async()=>{
+ const t=await setup({guest:true,admin:true,biometric:{available:true,enabled:true}});try{let reads=0;t.backend.signInWithBiometrics=async()=>t.setSession({user:{id:'user-1'}});t.backend.adminMfaStatus=async()=>({enforced:true,required:true,verified:false});t.backend.listBookings=t.backend.listProfiles=t.backend.listReceipts=async()=>{reads++;return []};await t.a.handleBiometric('signin');assert.equal(reads,0);assert.equal(t.a.currentAccount(),null);assert.equal(t.a.ui.screen,'mfa');}finally{t.close()}
 });
-test('BIO-UI-04 password fallback cancels a pending unlock and late completion cannot restore identity',async()=>{
- const bio={available:true,enabled:true,locked:true};const t=await setup({biometric:bio});try{
-  let done;t.backend.biometricAction=()=>new Promise(r=>done=r);t.backend.signOut=async()=>{bio.enabled=false;bio.locked=false;t.setSession(null)};
-  const first=t.a.handleBiometric('unlock');await t.a.handleBiometric('password');done();await first;
-  assert.equal(t.a.ui.screen,'account');assert.equal(t.a.currentAccount(),null);assert.ok(t.w.document.querySelector('#customer-login-form'));
- }finally{t.close()}
+test('BIO-UI-04 logout during biometric login cannot restore UI identity',async()=>{
+ const t=await setup({guest:true,biometric:{available:true,enabled:true}});try{let done;t.backend.signInWithBiometrics=()=>new Promise(r=>done=r);const p=t.a.handleBiometric('signin');await t.a.logout();done();await p;assert.equal(t.a.currentAccount(),null);assert.equal(t.a.ui.screen,'account');}finally{t.close()}
 });
-test('BIO-UI-05 a network error after native unlock preserves the retry and password controls',async()=>{
- const bio={available:true,enabled:true,locked:true};const t=await setup({biometric:bio});try{
-  t.backend.biometricAction=async()=>{bio.locked=false};t.backend.getMyProfile=async()=>{throw Error('Connection unavailable')};
-  await t.a.handleBiometric('unlock');assert.equal(t.a.ui.screen,'unlock');assert.equal(t.a.currentAccount(),null);assert.match(t.w.document.querySelector('#biometric-error').textContent,/Connection unavailable/);
- }finally{t.close()}
+test('BIO-UI-05 sign-in page shows fingerprint and explicit unchecked save-login consent',async()=>{
+ const t=await setup({guest:true,biometric:{available:true,enabled:false}});try{t.a.navigate('account');assert.ok(t.w.document.querySelector('[data-action=biometric-signin] svg'));assert.equal(t.w.document.querySelector('[name=saveLogin]').checked,false);await t.a.handleBiometric('signin');assert.match(t.w.document.querySelector('#biometric-signin-help').textContent,/tick Save login/);}finally{t.close()}
 });
-test('BIO-UI-06 successful customer unlock opens account controls instead of retaining the locked route',async()=>{
- const bio={available:true,enabled:true,locked:true};const t=await setup({biometric:bio});try{
-  t.backend.biometricAction=async()=>{bio.locked=false};await t.a.handleBiometric('unlock');
-  assert.equal(t.a.ui.screen,'account');assert.equal(t.a.ui.biometricResumePending,false);assert.equal(t.a.currentAccount().id,'user-1');assert.ok(t.w.document.querySelector('[data-action=biometric-lock]'));
- }finally{t.close()}
+test('BIO-UI-06 biometric customer sign-in opens normal account and forget keeps account signed in',async()=>{
+ const bio={available:true,enabled:true};const t=await setup({guest:true,biometric:bio});try{t.backend.signInWithBiometrics=async()=>t.setSession({user:{id:'user-1'}});await t.a.handleBiometric('signin');assert.equal(t.a.currentAccount().id,'user-1');t.backend.forgetSavedLogin=()=>bio.enabled=false;await t.a.handleBiometric('forget');assert.equal(t.a.currentAccount().id,'user-1');assert.equal(t.w.document.querySelector('[data-action=biometric-forget]'),null);}finally{t.close()}
 });

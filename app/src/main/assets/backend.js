@@ -6,7 +6,7 @@
   let refreshPromise = null;
   let refreshGeneration = -1;
   let sessionGeneration = 0;
-  let biometricPromise = null;
+  let savedLoginBusy = false;
   const AUTH_RETRY_KEY = "cleanthings.auth.retry.v1";
   let authRetryUntil = {};
   try {
@@ -107,7 +107,6 @@
   }
 
   async function refreshSessionIfNeeded(force) {
-    if (biometricPromise) { await biometricPromise; return session(); }
     if (mfaVerification && mfaGeneration === sessionGeneration) { await mfaVerification; return session(); }
     const active = session();
     if (!active || !active.refresh_token) return active;
@@ -162,12 +161,47 @@
     }
   }
 
-  async function signIn(email, password) {
+  async function signIn(email, password, options) {
+    if (savedLoginBusy) throw new Error('Finish the biometric request first.');
     const generation = ++sessionGeneration;
     const result = await authRequest("login", "/auth/v1/token?grant_type=password", { email: email, password: password });
     if (generation !== sessionGeneration) throw new Error("Sign-in was cancelled.");
     saveSession(result);
+    if (options && options.saveLogin) {
+      savedLoginBusy = true;
+      try {
+        await sessionStore.saveLogin({email:result.user.email || email,password:password,userId:result.user.id});
+      } catch (error) { result.savedLoginError = error.message; }
+      finally { password = ''; savedLoginBusy = false; }
+      if (generation !== sessionGeneration) throw new Error('Sign-in was cancelled.');
+    }
     return result;
+  }
+
+  async function signInWithBiometrics() {
+    if (savedLoginBusy) throw new Error('Biometric verification is already open.');
+    const remaining = authRetrySeconds('login');
+    if (remaining) throw retryError(remaining);
+    savedLoginBusy = true;
+    const generation = ++sessionGeneration;
+    let login = null;
+    try {
+      login = await sessionStore.useSavedLogin();
+      if (generation !== sessionGeneration) throw new Error('Biometric sign-in was cancelled.');
+      const result = await authRequest('login', '/auth/v1/token?grant_type=password', {email:login.email,password:login.password});
+      if (generation !== sessionGeneration) throw new Error('Biometric sign-in was cancelled.');
+      if (!result || !result.user || result.user.id !== login.userId) throw new Error('The saved login no longer matches this account. Use your password and save it again.');
+      saveSession(result);
+      return result;
+    } catch (error) {
+      if (error.code === 'invalid_credentials' || (error.status === 400 && !error.code)) error.message = 'Your saved login is no longer valid. Enter your current password and save the login again.';
+      throw error;
+    } finally { if (login) { login.password = ''; login.email = ''; } login = null; savedLoginBusy = false; }
+  }
+
+  function forgetSavedLogin() {
+    sessionGeneration += 1;
+    sessionStore.forgetSavedLogin();
   }
 
   async function signUp(profile, password) {
@@ -200,24 +234,6 @@
     try {
       if (active) await request("/auth/v1/logout?scope=local", { method: "POST", skipRefresh: true, headers: { Authorization: "Bearer " + active.access_token } });
     } finally { if (storageError) throw storageError; }
-  }
-
-  async function biometricAction(action) {
-    if (biometricPromise) throw new Error("Biometric verification is already open.");
-    const generation = sessionGeneration;
-    // Let token rotation finish before native enrolment captures the current session.
-    if (refreshPromise) await refreshPromise;
-    if (mfaVerification) await mfaVerification;
-    if (generation !== sessionGeneration) throw new Error("Your session changed. Sign in again.");
-    if (biometricPromise) throw new Error("Biometric verification is already open.");
-    const pending = sessionStore.biometric(action);
-    biometricPromise = pending;
-    try {
-      await pending;
-      if (generation !== sessionGeneration) throw new Error("Verification cancelled.");
-    } finally { if (biometricPromise === pending) biometricPromise = null; }
-    // The restored session still has to pass provider expiry and account-role checks.
-    return refreshSessionIfNeeded();
   }
 
   async function adminMfaStatus() {
@@ -539,12 +555,8 @@
     authRetrySeconds: authRetrySeconds,
     session: session,
     sessionStorageStatus: function () { return sessionStore.status(); },
-    biometricAction: biometricAction,
-    lockSession: function () {
-      sessionGeneration += 1;
-      sessionStore.lock();
-      if (root.dispatchEvent && root.Event) root.dispatchEvent(new root.Event("cleanthings:session-ended"));
-    },
+    signInWithBiometrics: signInWithBiometrics,
+    forgetSavedLogin: forgetSavedLogin,
     adminMfaStatus: adminMfaStatus,
     listMfaFactors: listMfaFactors,
     enrollMfa: enrollMfa,

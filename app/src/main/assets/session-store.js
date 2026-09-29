@@ -7,8 +7,8 @@
   let cached = null;
   let warning = "";
   let failed = false;
-  let locked = false;
-  let pendingBiometric = null;
+  const loginBridge = root.CleanThingsNativeLogin;
+  let pendingLogin = null;
   let requestSequence = 0;
 
   function nativeCall(method, value) {
@@ -46,16 +46,12 @@
       removeLegacy();
       cached = value;
     } catch (error) {
-      if (error.code === "locked") { cached = null; locked = true; removeLegacy(); return; }
+      if (error.code === 'legacy_lock') { cached = null; removeLegacy(); warning = error.message; return; }
       cached = null; failed = true;
       warning = "Saved sign-in could not be secured. Restart the app or sign in again.";
     }
   }
-  function read() {
-    initialise();
-    if (nativeRequired && bridge && typeof bridge.biometricStatus === "function" && biometricStatus().locked) { cached = null; locked = true; }
-    return cached;
-  }
+  function read() { initialise(); return cached; }
   function write(value) {
     initialise();
     try {
@@ -63,10 +59,6 @@
       removeLegacy();
       cached = value; failed = false; warning = "";
     } catch (error) {
-      if (error.code === "locked" || error.code === "busy") {
-        if (error.code === "locked") { cached = null; locked = true; }
-        throw error; // Never delete a protected session because a write was refused.
-      }
       cached = null; failed = true;
       warning = "Your sign-in could not be saved securely. Restart the app and sign in again.";
       // Prevent a previous account from reappearing after an unsuccessful account switch.
@@ -76,74 +68,76 @@
   }
   function clear() {
     initialised = true; cached = null;
-    if (pendingBiometric) pendingBiometric.finish(new Error("Verification cancelled."));
+    cancelSavedLogin();
     let error = null;
     try { removeLegacy(); } catch (failure) { error = failure; }
     try { if (nativeRequired) nativeCall("clear"); } catch (failure) { error = failure; }
     failed = !!error;
     warning = error ? "Saved sign-in could not be fully removed. Restart the app and sign out again." : "";
     if (error) throw new Error(warning);
-    locked = false;
   }
-  function biometricStatus() {
-    if (!nativeRequired) return { available: false, enabled: false, locked: false, reason: "Biometric unlock is available in the Android app." };
-    if (!bridge || typeof bridge.biometricStatus !== "function") return { available: false, enabled: false, locked: locked, reason: "Update the Android app to use biometric unlock." };
-    try {
-      const value = nativeCall("biometricStatus");
-      if (!value || typeof value.enabled !== "boolean" || typeof value.locked !== "boolean" || typeof value.available !== "boolean") throw new Error("Invalid status");
-      return value;
-    } catch (error) { return { available: false, enabled: true, locked: true, reason: "Saved sign-in is unavailable. Use password sign-in to reset it." }; }
-  }
-  function biometric(action) {
+  function status() {
     initialise();
-    if (!nativeRequired || !bridge || typeof bridge.biometric !== "function") return Promise.reject(new Error("Biometric unlock requires the Android app."));
-    if (!["enable", "unlock", "disable"].includes(action)) return Promise.reject(new Error("Unknown biometric action."));
-    if (pendingBiometric) return Promise.reject(new Error("Biometric verification is already open."));
-    const id = "bio-" + Date.now() + "-" + (++requestSequence);
+    return { encrypted: nativeRequired && !failed, persistent: nativeRequired && !failed, warning: warning, biometric: savedLoginStatus(),
+      message: warning || (nativeRequired ? "Your saved sign-in is encrypted on this device." : "This browser preview keeps your sign-in only until this page closes or reloads.") };
+  }
+  function loginCall(method, args) {
+    if (!nativeRequired || !loginBridge || typeof loginBridge[method] !== 'function') throw new Error('Biometric sign-in requires the updated Android app.');
+    const result = JSON.parse(loginBridge[method].apply(loginBridge, args || []));
+    if (!result || result.ok !== true) throw new Error(result && result.error || 'Saved login is unavailable.');
+    return result.value;
+  }
+  function savedLoginStatus() {
+    if (!nativeRequired || !loginBridge) return {available:false,enabled:false,reason:'Biometric sign-in is available in the Android app.'};
+    try {
+      const value = loginCall('status');
+      if (!value || typeof value.available !== 'boolean' || typeof value.enabled !== 'boolean') throw new Error('Invalid status');
+      return value;
+    } catch (error) { return {available:false,enabled:true,reason:'Saved login is unavailable. Use your password or forget the saved login.'}; }
+  }
+  function cancelSavedLogin() {
+    if (pendingLogin) pendingLogin.finish(new Error('Biometric sign-in cancelled.'));
+    if (nativeRequired && loginBridge) { try { loginCall('cancel'); } catch (ignored) { /* Session clearing must still proceed. */ } }
+  }
+  function forgetSavedLogin() { cancelSavedLogin(); loginCall('forget'); }
+  function savedLoginRequest(action, credentials) {
+    if (!nativeRequired || !loginBridge) return Promise.reject(new Error('Biometric sign-in requires the Android app.'));
+    if (pendingLogin) return Promise.reject(new Error('Biometric verification is already open.'));
+    const id = 'login-' + Date.now() + '-' + (++requestSequence);
     return new Promise(function (resolve, reject) {
       let timer;
       function finish(error) {
-        if (!pendingBiometric || pendingBiometric.id !== id) return;
-        pendingBiometric = null; clearTimeout(timer);
-        root.removeEventListener("cleanthings:biometric-result", receive);
+        if (!pendingLogin || pendingLogin.id !== id) return;
+        pendingLogin = null; clearTimeout(timer); root.removeEventListener('cleanthings:biometric-result', receive);
         if (error) { reject(error); return; }
-        initialised = false; cached = null; locked = false; failed = false; warning = "";
-        initialise();
-        const result = biometricStatus();
-        if (result.locked || (action !== "disable" && !result.enabled) || (action === "disable" && result.enabled) || !cached) {
-          reject(new Error("Saved sign-in could not be unlocked. Use password sign-in.")); return;
-        }
-        resolve(result);
+        try {
+          if (action === 'save') {
+            if (!savedLoginStatus().enabled) throw new Error('Your login was not saved.');
+            resolve(null);
+          } else {
+            // Native result is one-use and available only after actual biometric cryptography.
+            const login = JSON.parse(loginCall('take', [id]));
+            if (!login || login.kind !== 'saved-login-v1' || !login.email || !login.password || !login.userId) throw new Error('Saved login is invalid. Use your password.');
+            resolve(login);
+          }
+        } catch (failure) { reject(failure); }
       }
       function receive(event) {
         const data = event.detail;
         if (!data || data.id !== id) return;
-        finish(data.result && data.result.ok === true ? null : new Error(data.result && data.result.error || "Biometric verification was not completed."));
+        finish(data.result && data.result.ok === true ? null : new Error(data.result && data.result.error || 'Biometric sign-in was not completed.'));
       }
-      pendingBiometric = { id: id, finish: finish };
-      root.addEventListener("cleanthings:biometric-result", receive);
-      timer = setTimeout(function () {
-        try { nativeCall("cancelBiometric"); } catch (ignored) { /* Stay locked on failure. */ }
-        finish(new Error("Verification timed out. Try again."));
-      }, 90000);
+      pendingLogin = {id:id,finish:finish}; root.addEventListener('cleanthings:biometric-result', receive);
+      timer = setTimeout(function () { cancelSavedLogin(); }, 90000);
       try {
-        const result = JSON.parse(bridge.biometric(action, id));
-        if (!result || result.ok !== true) finish(new Error(result && result.error || "Biometric verification could not start."));
+        loginCall(action, action === 'save' ? [JSON.stringify(Object.assign({kind:'saved-login-v1'},credentials)),id] : [id]);
       } catch (error) { finish(error); }
+      credentials = null;
     });
   }
-  function status() {
-    initialise();
-    const biometric = biometricStatus();
-    return { encrypted: nativeRequired && !failed, persistent: nativeRequired && !failed, warning: warning,
-      biometric: biometric,
-      message: warning || (nativeRequired ? "Your saved sign-in is encrypted on this device." : "This browser preview keeps your sign-in only until this page closes or reloads.") };
-  }
-  function lock() {
-    if (!nativeRequired || !biometricStatus().enabled) throw new Error("Enable biometric unlock first.");
-    if (pendingBiometric) pendingBiometric.finish(new Error("Verification cancelled."));
-    nativeCall("cancelBiometric"); cached = null; locked = true; initialised = true;
-  }
-  // Browser previews deliberately keep tokens in memory; there is no plaintext persistence fallback.
-  root.CleanThingsSessionStore = Object.freeze({ read: read, write: write, clear: clear, status: status, biometric: biometric, lock: lock });
+  // Browser previews never persist tokens or saved account credentials.
+  root.CleanThingsSessionStore = Object.freeze({ read:read, write:write, clear:clear, status:status,
+    saveLogin:function (credentials) { return savedLoginRequest('save', credentials); },
+    useSavedLogin:function () { return savedLoginRequest('use'); },
+    cancelSavedLogin:cancelSavedLogin, forgetSavedLogin:forgetSavedLogin });
 })(window);

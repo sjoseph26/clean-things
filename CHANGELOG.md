@@ -1,5 +1,14 @@
 # Change log
 
+## 0.6.8 saved-login biometric sign-in — 29 September 2026
+
+- Replace app locking with saved email/password account sign-in after an explicit checkbox and biometric approval.
+- Sign-out clears tokens but retains the separate encrypted saved login; Forget saved login removes only credentials.
+- The fingerprint button performs a fresh server password grant and retains account/role and administrator MFA checks.
+- Remove the lock screen, Lock now, background timeout and screenshot suppression.
+- Preserve cancellation, callback correlation, generation checks and authenticated-operation ordering.
+- 115 automated tests and 36 targeted browser checks passed. Android version code 20. Real-device recognition still needs acceptance; staged admin MFA is unchanged.
+
 ## 0.6.7 biometric sign-in entry — 29 September 2026
 
 - Show a fingerprint icon and “Sign in with biometrics” button at the top of the sign-in form, above password fields.

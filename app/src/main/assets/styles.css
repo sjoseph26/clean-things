@@ -457,7 +457,4 @@ button { -webkit-tap-highlight-color: transparent; }
 .biometric-signin-choice { text-align: center; }
 .biometric-signin-choice .meta { margin: 10px 0 0; }
 .signin-password-label { margin: 18px 0; padding-top: 16px; border-top: 1px solid var(--line); text-align: center; color: var(--muted); font-size: 14px; }
-.biometric-signin, .biometric-unlock { display: flex; align-items: center; justify-content: center; gap: 12px; white-space: normal; }
-.biometric-welcome-icon { display: flex; align-items: center; justify-content: center; width: 84px; height: 84px; margin: 0 auto 16px; border-radius: 24px; color: var(--accent-text); background: var(--sky-100); }
-.biometric-welcome-icon .fingerprint-icon { width: 52px; height: 52px; }
-.biometric-unlock + .btn { margin-top: 10px; }
+.biometric-signin { display: flex; align-items: center; justify-content: center; gap: 12px; white-space: normal; }

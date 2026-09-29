@@ -1,4 +1,12 @@
-# Test plan and evidence index - v0.6.7
+# Test plan and evidence index - v0.6.8
+
+## v0.6.8 saved-login sign-in correction
+
+The old app-lock design is superseded. Password sign-in now offers an unchecked Save login checkbox, followed by native biometric approval. The separate encrypted credential vault retains one email/password/user ID after sign-out. The fingerprint button decrypts it once and makes a fresh server password grant. Forget saved login removes it without ending the active session. No background timer, manual lock or unlock screen remains. Android version code 20; physical-device sensor/Keystore acceptance is still required. Administrator MFA remains staged; Randy's v0.6.2 baseline is unchanged.
+
+115 automated tests and 36 targeted browser state checks passed, with no selected-rule accessibility violations or browser runtime errors. The Android build compiled with Java/D8. These checks use fixtures, not real phone recognition or production account sign-in. See [current biometric flow](BIOMETRIC-UNLOCK.md).
+
+The version-specific sections below record earlier work and are superseded where they describe biometric app locking.
 
 Run from the repository root with generated demo configuration and `npm ci`. All automated test data is fictional. Exact command, result and source hashes are recorded in [the evidence summary](evidence/README.md). A passing local result does not imply a deployed result.
 

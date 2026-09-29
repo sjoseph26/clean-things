@@ -1,4 +1,4 @@
-# Clean Things v0.6.7
+# Clean Things v0.6.8
 
 Android booking and service-management prototype. This is a **repair candidate**, with local automated evidence and a reproducible native build. It is not certified as deployment-ready; the new database migration and live acceptance checks are still required.
 
@@ -44,7 +44,7 @@ For an Android build, install JDK 17 and Android SDK platform 35/build-tools 35.
 bash build-apk.sh qa
 ```
 
-The output is `dist/CleanThings-qa-v0.6.7.apk`, a separate `gy.cleanthings.app.qa` app for fictional testing (Android 7+). The live variant requires the original signing key and connected configuration. See the deployment guide before building/installing it. Native version code: 19.
+The output is `dist/CleanThings-qa-v0.6.8.apk`, a separate `gy.cleanthings.app.qa` app for fictional testing (Android 7+). The live variant requires the original signing key and connected configuration. See the deployment guide before building/installing it. Native version code: 20.
 
 ## Project documentation
 
@@ -66,4 +66,4 @@ The output is `dist/CleanThings-qa-v0.6.7.apk`, a separate `gy.cleanthings.app.q
 
 Configuration, signing material, generated APKs, SDKs and dependencies are not committed. No historical Git commits or completed independent evaluations have been invented.
 
-Optional [biometric unlock](docs/BIOMETRIC-UNLOCK.md) requires Android 11+ and a supported secure biometric. This candidate includes staged administrator MFA; finish device acceptance and coordinated activation before replacing the current tester build.
+Optional [saved-login biometric sign-in](docs/BIOMETRIC-UNLOCK.md) requires Android 11+ and a supported secure biometric. This candidate includes staged administrator MFA; finish device acceptance and coordinated activation before replacing the current tester build.

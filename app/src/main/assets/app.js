@@ -86,7 +86,6 @@
     adminStatus: "All",
     adminMonth: "",
     mfa: null,
-    biometricResumePending: false,
     accountMode: "signin",
     authNotice: "",
     pendingBookingServiceId: null,
@@ -118,7 +117,9 @@
     const recovery = form.querySelector('[data-action="forgot-password"]');
     const loginWait = Backend.authRetrySeconds("login");
     const recoveryWait = Backend.authRetrySeconds("recovery");
-    login.disabled = pendingActions.has("login") || loginWait > 0;
+    login.disabled = pendingActions.has("login") || pendingActions.has("biometric") || loginWait > 0;
+    const biometric = form.querySelector('[data-action="biometric-signin"]');
+    if (biometric) biometric.disabled = login.disabled;
     login.textContent = loginWait ? "Try sign-in again in " + loginWait + "s" : "Sign in";
     recovery.disabled = pendingActions.has("recovery") || recoveryWait > 0;
     recovery.textContent = recoveryWait ? "Request another email in " + recoveryWait + "s" : "Reset password";
@@ -213,7 +214,6 @@
 
   async function bootstrapBackend() {
     if (!isLive()) return;
-    if (biometricState().locked) { render(); return; }
     const epoch = authEpoch;
     ui.backendStatus = "connecting";
     render();
@@ -518,7 +518,6 @@
   }
 
   function navigate(screen, options) {
-    if (biometricState().locked || ui.biometricResumePending) { render(); return; }
     options = options || {};
     if ((screen === "booking" || screen === "bookings" || screen === "payment") && !currentAccount()) {
       routeToAccount(screen === "bookings" ? "Sign in or create an account to view your bookings." : "Sign in or create an account before booking a service.", options.serviceId || "");
@@ -732,8 +731,8 @@
     if (!isLive() || !Backend.sessionStorageStatus) return "";
     const storage = Backend.sessionStorageStatus();
     const bio = biometricState();
-    const controls = bio.enabled ? '<button class="btn btn-primary btn-block" data-action="biometric-lock">Lock now</button><button class="btn btn-secondary btn-block" data-action="biometric-disable">Turn off biometric unlock</button>' : bio.available ? '<button class="btn btn-primary btn-block" data-action="biometric-enable">Enable biometric unlock</button>' : '<p class="meta">' + Core.safeText(bio.reason || '') + '</p>';
-    return '<div class="card"><h3>Sign-in protection</h3><p>' + Core.safeText(storage.message) + '</p><h4>Biometric unlock' + (bio.enabled ? ' · On' : '') + '</h4><p>Use your device’s secure fingerprint or supported face unlock. Locks after an app restart or one minute in the background. Anyone enrolled on this device can unlock it. Admin two-step verification still applies.</p>' + controls + '</div>';
+    const controls = bio.enabled ? '<button class="btn btn-secondary btn-block" data-action="biometric-forget">Forget saved login</button>' : '<p class="meta">On your next password sign-in, tick Save login for biometric sign-in.</p>';
+    return '<div class="card"><h3>Biometric sign-in</h3><p>' + (bio.enabled ? 'A login is saved on this device. After signing out, use the fingerprint button to sign in again. Signing out keeps the saved login.' : 'Save a login to sign in with your fingerprint or supported face recognition.') + '</p>' + controls + '<p class="meta">' + Core.safeText(storage.message) + '</p></div>';
   }
 
   function biometricState() {
@@ -745,37 +744,36 @@
   function biometricSignInControl() {
     return '<div class="biometric-signin-choice"><button type="button" class="btn btn-secondary btn-block biometric-signin" data-action="biometric-signin" aria-describedby="biometric-signin-help">' + fingerprintIcon() + '<span>Sign in with biometrics</span></button><p id="biometric-signin-help" class="meta" role="status">Use your fingerprint or supported face unlock.</p></div>';
   }
-  function renderBiometricUnlock() {
+  function savedLoginConsent() {
     const bio = biometricState();
-    return '<div class="page"><div class="account-welcome"><div class="biometric-welcome-icon">' + fingerprintIcon() + '</div><h2>Unlock Clean Things</h2><p>Your saved sign-in is protected on this device.</p></div><div class="card"><p>' + Core.safeText(bio.available ? 'Verify with your fingerprint or supported face unlock to continue.' : bio.reason || 'Use password sign-in to continue.') + '</p><p id="biometric-error" class="field-error" role="alert">' + Core.safeText(ui.biometricError || '') + '</p>' + (bio.available ? '<button class="btn btn-primary btn-block biometric-unlock" data-action="biometric-unlock"' + (pendingActions.has('biometric') ? ' disabled' : '') + '>' + fingerprintIcon() + '<span>Sign in with biometrics</span></button>' : '') + '<button class="btn btn-secondary btn-block" data-action="biometric-password">Use password sign-in</button><p class="meta">Password sign-in removes this saved session and its biometric setting. You can enable it again after signing in.</p></div></div>';
+    return (bio.available ? '<label class="check-row"><input type="checkbox" name="saveLogin"><span>Save login for biometric sign-in</span></label><p class="meta">Your login is encrypted on this phone. Anyone with a fingerprint or supported face enrolled on it can use this saved login.</p>' : '') + (bio.enabled ? '<button type="button" class="btn btn-ghost btn-block" data-action="biometric-forget">Forget saved login</button>' : '');
   }
   async function handleBiometric(action) {
-    if (action === 'signin') {
-      const bio = biometricState();
-      if (!bio.enabled || !bio.available) {
-        fieldMessage('biometric-signin-help', bio.available ? 'Sign in with your password first, then enable biometric unlock under Account → Sign-in protection.' : bio.reason || 'Biometric unlock requires the Android app and a supported fingerprint or face unlock. You can sign in with your password.');
-        return;
-      }
-      action = 'unlock';
+    if (action === 'forget') {
+      try { Backend.forgetSavedLogin(); render(); showToast('Saved login removed from this device.'); }
+      catch (error) { showToast(error.message); }
+      return;
     }
-    if (action === 'password') { ui.biometricError = ''; ui.biometricResumePending = false; await logout(); return; }
-    if (action === 'lock') { Backend.lockSession(); closeModal(); ui.biometricError = ''; render(); return; }
-    if (pendingActions.has('biometric')) return;
-    pendingActions.add('biometric'); const epoch = authEpoch; ui.biometricError = '';
-    document.querySelectorAll('[data-action^="biometric-"]:not([data-action="biometric-password"])').forEach(function (b) { b.disabled = true; });
+    if (action !== 'signin' || pendingActions.has('biometric') || pendingActions.has('login')) return;
+    const bio = biometricState();
+    if (!bio.enabled || !bio.available) {
+      fieldMessage('biometric-signin-help', bio.available ? 'Sign in with your password and tick Save login for biometric sign-in.' : bio.reason || 'Use your password. Secure biometrics are unavailable on this device.');
+      return;
+    }
+    pendingActions.add('biometric'); const epoch = ++authEpoch; refreshAuthControls();
     try {
-      await Backend.biometricAction(action);
+      await Backend.signInWithBiometrics();
       if (epoch !== authEpoch) return;
       const profile = await Backend.getMyProfile();
       if (epoch !== authEpoch) return;
-      if (!profile) throw new Error('Your account could not be loaded. Use password sign-in.');
+      if (!profile) throw new Error('Your account could not be loaded. Try again.');
       const account = await activateAccount(profile);
       if (epoch !== authEpoch) return;
-      if (action === 'unlock') { ui.biometricResumePending = false; if (account) ui.screen = 'account'; finishAccountEntry(account); }
-      showToast(action === 'enable' ? 'Biometric unlock enabled.' : action === 'disable' ? 'Biometric unlock turned off.' : 'Saved sign-in unlocked.');
+      if (account) ui.screen = 'account';
+      finishAccountEntry(account);
     } catch (error) {
-      if (epoch === authEpoch) { ui.biometricError = error.message; showToast(error.message); }
-    } finally { pendingActions.delete('biometric'); if (epoch === authEpoch) render(); }
+      if (epoch === authEpoch) fieldMessage('biometric-signin-help', error.message);
+    } finally { pendingActions.delete('biometric'); refreshAuthControls(); }
   }
 
   async function requireAdminMfa(profile, backup) {
@@ -881,7 +879,7 @@
   }
 
   function customerLoginForm() {
-    if (isLive()) return '<form id="customer-login-form" class="card" novalidate>' + biometricSignInControl() + '<p class="signin-password-label">Or use your password</p><div class="field"><label for="customer-email">Email</label><input id="customer-email" name="email" type="email" autocomplete="username" required></div><div class="field"><label for="customer-password">Password</label><input id="customer-password" name="password" type="password" autocomplete="current-password" required></div><span id="customer-login-error" class="field-error"></span><button class="btn btn-primary btn-block" type="submit">Sign in</button><button type="button" class="btn btn-ghost btn-block" data-action="forgot-password">Reset password</button></form>';
+    if (isLive()) return '<form id="customer-login-form" class="card" novalidate>' + biometricSignInControl() + '<p class="signin-password-label">Or use your password</p><div class="field"><label for="customer-email">Email</label><input id="customer-email" name="email" type="email" autocomplete="username" required></div><div class="field"><label for="customer-password">Password</label><input id="customer-password" name="password" type="password" autocomplete="current-password" required></div>' + savedLoginConsent() + '<span id="customer-login-error" class="field-error"></span><button class="btn btn-primary btn-block" type="submit">Sign in</button><button type="button" class="btn btn-ghost btn-block" data-action="forgot-password">Reset password</button></form>';
     return '<div class="card"><div class="info-callout"><strong>Fictional local demo:</strong> Choose a role below. Demo access uses no password, PIN or remote account.</div><button class="btn btn-primary btn-block" data-action="demo-login" data-demo-role="customer">Continue as customer demo</button><button class="btn btn-secondary btn-block" data-action="demo-login" data-demo-role="admin">Continue as administrator demo</button></div>';
   }
 
@@ -972,12 +970,6 @@
 
   function render() {
     applyTheme();
-    if (biometricState().locked || ui.biometricResumePending) {
-      ui.biometricResumePending = true;
-      if (ui.screen !== 'unlock' || state.accounts.length) { clearIdentity(); closeModal(); }
-      ui.screen = 'unlock'; renderTopbar(); topbar.querySelector('button').remove(); bottomNav.innerHTML = ''; main.innerHTML = renderBiometricUnlock();
-      document.getElementById('accessible-refresh').hidden = true; return;
-    }
     if (ui.mfa) ui.screen = "mfa";
     renderTopbar();
     renderBottomNav();
@@ -1172,19 +1164,25 @@
 
   async function submitCustomerLogin(event) {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const data = new FormData(form);
     if (isLive()) {
-      if (pendingActions.has("login")) return;
-      pendingActions.add("login"); authEpoch += 1;
+      if (pendingActions.has("login") || pendingActions.has("biometric")) return;
+      pendingActions.add("login"); const epoch = ++authEpoch;
       const button = event.currentTarget.querySelector('[type="submit"]'); button.disabled = true;
       try {
-        await Backend.signIn(String(data.get("email") || "").trim(), String(data.get("password") || ""));
+        refreshAuthControls();
+        const result = await Backend.signIn(String(data.get("email") || "").trim(), String(data.get("password") || ""), {saveLogin:data.get("saveLogin") === "on"});
+        if (epoch !== authEpoch) return;
         const profile = await Backend.getMyProfile();
+        if (epoch !== authEpoch) return;
         const account = await activateAccount(profile);
+        if (epoch !== authEpoch) return;
         finishAccountEntry(account);
+        if (result && result.savedLoginError) showToast('Signed in. Login was not saved: ' + result.savedLoginError);
       } catch (error) {
-        fieldMessage("customer-login-error", error.message);
-      } finally { pendingActions.delete("login"); button.disabled = false; refreshAuthControls(); }
+        if (epoch === authEpoch) fieldMessage("customer-login-error", error.message);
+      } finally { data.delete("password"); form.querySelector('[name="password"]').value = ''; pendingActions.delete("login"); button.disabled = false; refreshAuthControls(); }
       return;
     }
     const phone = String(data.get("phone") || "").trim();
