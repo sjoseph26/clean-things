@@ -1,4 +1,4 @@
-# Biometric unlock — v0.6.6 feature candidate
+# Biometric unlock — v0.6.7 feature candidate
 
 Status: implemented, compiled and tested with JVM/JavaScript/browser fixtures. **Real Android biometric and lifecycle acceptance is still required.** No live database or auth configuration was changed. The feature branch builds on administrator MFA, which is still awaiting its coordinated server rollout.
 
@@ -7,6 +7,10 @@ Status: implemented, compiled and tested with JVM/JavaScript/browser fixtures. *
 The v0.6.5 phone screenshot reported “Secure sign-in storage is unavailable” while enabling biometrics. Source review found AAD was sent to an auth-per-use Keystore operation before biometric approval. Android can cache that failure and surface it later during finalization. The hotfix moves AAD into authenticated envelope creation/unwrapping, which run only in the success callback. A host fixture reproduces this ordering failure; no device exception log was available, so a real-phone retry remains necessary to confirm the reported failure is resolved.
 
 Install v0.6.6 as an update over v0.6.5, reopen Account → Sign-in protection and try Enable biometric unlock again. No uninstall or data reset is required for the update. If it fails, record the fixed BIO-* stage code now shown and the phone/Android version. Do not share sign-in credentials or biometric data.
+
+## Sign-in page (v0.6.7)
+
+The sign-in page now displays a fingerprint icon and **Sign in with biometrics** above the password fields. When no protected saved session exists, tapping it explains that the user must sign in with a password and enable biometrics in Account → Sign-in protection first. It does not create an account/session or open a non-functional native prompt. A supported protected saved session presents the same icon/button on its unlock screen and invokes the existing authenticated native flow. Unsupported devices show an inline explanation and retain password access. Explicit sign-out still deletes the saved session and biometric setting.
 
 ## User flow
 

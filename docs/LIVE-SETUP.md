@@ -1,4 +1,4 @@
-# Deployment and recovery guide - v0.6.6
+# Deployment and recovery guide - v0.6.7
 
 This guide describes the prepared candidate. No production database change or GitHub publication was performed during this repair.
 
@@ -69,3 +69,7 @@ No extra SQL migration or server setting is needed for device biometric unlock. 
 ### v0.6.6 biometric hotfix
 
 Use v0.6.6 for the next phone retry, installed as an update over v0.6.5. It corrects authenticated-key operation ordering and adds safe troubleshooting codes. No server migration or live activation is part of this hotfix. The staged administrator MFA restriction remains in place.
+
+### v0.6.7 sign-in icon update
+
+Install v0.6.7 over the current feature build to see the fingerprint sign-in control. The v0.6.6 biometric hotfix is included. Initial setup still requires a password sign-in and opt-in; biometric unlock restores a saved session. No live server change is included.

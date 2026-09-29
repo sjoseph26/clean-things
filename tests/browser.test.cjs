@@ -33,7 +33,7 @@ async function inspect(page,name,width,theme,screenshot=false){
  await new Promise(r=>server.listen(0,'127.0.0.1',r));
  const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
  try{
- for(const width of [360,393,412]) for(const theme of ['light','dark']){
+ if(!process.env.CT_BIOMETRIC_ONLY) for(const width of [360,393,412]) for(const theme of ['light','dark']){
   const context=await browser.newContext({viewport:{width,height:873},geolocation:{latitude:6.82,longitude:-58.16},permissions:['geolocation']});
   const page=await context.newPage();let admin=false;let records=[];let uploadBytes=0;let serviceLoads=0;let mfaVerified=false;
   let factors=width===393?[{id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',factor_type:'totp',status:'verified',friendly_name:'Primary authenticator'}]:[];
@@ -167,6 +167,13 @@ async function inspect(page,name,width,theme,screenshot=false){
   await page.locator('[data-action=biometric-enable]').click();await page.locator('[data-action=biometric-lock]').waitFor();await page.locator('[data-action=biometric-lock]').click();
   await page.getByRole('heading',{name:'Unlock Clean Things'}).waitFor();await page.locator('[data-action=biometric-password]').click();
   await page.locator('#customer-login-form').waitFor();assert.equal(await page.locator('[data-action=biometric-unlock]').count(),0);
+  assert.equal(await page.locator('[data-action=biometric-signin] svg').count(),1);
+  await inspect(page,'biometric-signin',width,theme,true);
+  const beforeHint=protectedReads;await page.locator('[data-action=biometric-signin]').click();
+  await page.getByText('Sign in with your password first, then enable biometric unlock under Account → Sign-in protection.',{exact:true}).waitFor();
+  assert.equal(protectedReads,beforeHint);assert.equal(await page.locator('#customer-login-form').count(),1);
+  await inspect(page,'biometric-signin-setup',width,theme);
+
   await context.close();
  }
  }finally{await browser.close();server.close();fs.writeFileSync(path.join(out,'results.json'),JSON.stringify({results,violations,runtimeErrors,note:'Chromium with mocked remote responses and simulated GPS; not live/device certification.'},null,2));}

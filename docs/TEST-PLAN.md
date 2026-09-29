@@ -1,4 +1,4 @@
-# Test plan and evidence index - v0.6.6
+# Test plan and evidence index - v0.6.7
 
 Run from the repository root with generated demo configuration and `npm ci`. All automated test data is fictional. Exact command, result and source hashes are recorded in [the evidence summary](evidence/README.md). A passing local result does not imply a deployed result.
 
@@ -81,3 +81,7 @@ Browser tests simulate the native adapter in six viewport/theme combinations and
 ## v0.6.6 hotfix evidence
 
 112 automated tests passed. `BIO-07` additionally runs `BiometricAuthOrderTest`: pre-auth AAD poisons the test operation even if approval follows; post-auth wrap and unwrap succeed; unauthenticated operations fail. `BIO-11` asserts native prompt preparation has no AAD/finalization operations and that diagnostic messages expose no raw exceptions. These are host simulations, not device certification. Browser JavaScript/CSS/HTML are unchanged from v0.6.5's 141-result browser run; that evidence is carried forward without rerunning the unchanged UI. Repeat enable/restart/unlock on the reporting phone using v0.6.6.
+
+## v0.6.7 sign-in icon verification
+
+112 automated tests pass. `CT_BIOMETRIC_ONLY=1 npm run test:browser` runs the affected sign-in/unlock flows at 360, 393 and 412 pixels in both themes: 36 state inspections pass, with zero selected-rule accessibility violations or runtime errors. It checks the visible SVG/button, password-first setup help without protected reads, and the existing cancel, unlock, disable, enable, manual lock and password fallback paths. The previous unrelated 117-state flow was not rerun for this UI-only change. Actual device recognition remains pending the v0.6.6 hotfix retry.

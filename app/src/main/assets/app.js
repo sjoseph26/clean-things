@@ -739,11 +739,25 @@
   function biometricState() {
     return isLive() && Backend.sessionStorageStatus ? Backend.sessionStorageStatus().biometric || {} : {};
   }
+  function fingerprintIcon() {
+    return '<svg class="fingerprint-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 5.5a10 10 0 0 1 14 0M3.5 10a8.5 8.5 0 0 1 17 1.5v2M6 13v-1.5a6 6 0 0 1 12 0v2.2c0 2.4.5 4.2 1.3 5.8M3.5 14.5c0 2.5-.3 4-1 5.5M8.7 20.7c.8-2.2 1-4.7 1-7.2v-2a2.3 2.3 0 0 1 4.6 0v2c0 3 .5 5.6 1.5 8M12 11.5V14c0 3.2-.3 5.7-1 8M6 16c-.1 2.2-.4 3.7-1 5M16.7 11.5v2.2c0 1.7.2 3.2.6 4.7"/></svg>';
+  }
+  function biometricSignInControl() {
+    return '<div class="biometric-signin-choice"><button type="button" class="btn btn-secondary btn-block biometric-signin" data-action="biometric-signin" aria-describedby="biometric-signin-help">' + fingerprintIcon() + '<span>Sign in with biometrics</span></button><p id="biometric-signin-help" class="meta" role="status">Use your fingerprint or supported face unlock.</p></div>';
+  }
   function renderBiometricUnlock() {
     const bio = biometricState();
-    return '<div class="page"><div class="account-welcome"><div class="service-icon">🔒</div><h2>Unlock Clean Things</h2><p>Your saved sign-in is protected on this device.</p></div><div class="card"><p>' + Core.safeText(bio.available ? 'Verify with your fingerprint or supported face unlock to continue.' : bio.reason || 'Use password sign-in to continue.') + '</p><p id="biometric-error" class="field-error" role="alert">' + Core.safeText(ui.biometricError || '') + '</p>' + (bio.available ? '<button class="btn btn-primary btn-block" data-action="biometric-unlock"' + (pendingActions.has('biometric') ? ' disabled' : '') + '>Unlock with biometrics</button>' : '') + '<button class="btn btn-secondary btn-block" data-action="biometric-password">Use password sign-in</button><p class="meta">Password sign-in removes this saved session and its biometric setting. You can enable it again after signing in.</p></div></div>';
+    return '<div class="page"><div class="account-welcome"><div class="biometric-welcome-icon">' + fingerprintIcon() + '</div><h2>Unlock Clean Things</h2><p>Your saved sign-in is protected on this device.</p></div><div class="card"><p>' + Core.safeText(bio.available ? 'Verify with your fingerprint or supported face unlock to continue.' : bio.reason || 'Use password sign-in to continue.') + '</p><p id="biometric-error" class="field-error" role="alert">' + Core.safeText(ui.biometricError || '') + '</p>' + (bio.available ? '<button class="btn btn-primary btn-block biometric-unlock" data-action="biometric-unlock"' + (pendingActions.has('biometric') ? ' disabled' : '') + '>' + fingerprintIcon() + '<span>Sign in with biometrics</span></button>' : '') + '<button class="btn btn-secondary btn-block" data-action="biometric-password">Use password sign-in</button><p class="meta">Password sign-in removes this saved session and its biometric setting. You can enable it again after signing in.</p></div></div>';
   }
   async function handleBiometric(action) {
+    if (action === 'signin') {
+      const bio = biometricState();
+      if (!bio.enabled || !bio.available) {
+        fieldMessage('biometric-signin-help', bio.available ? 'Sign in with your password first, then enable biometric unlock under Account → Sign-in protection.' : bio.reason || 'Biometric unlock requires the Android app and a supported fingerprint or face unlock. You can sign in with your password.');
+        return;
+      }
+      action = 'unlock';
+    }
     if (action === 'password') { ui.biometricError = ''; ui.biometricResumePending = false; await logout(); return; }
     if (action === 'lock') { Backend.lockSession(); closeModal(); ui.biometricError = ''; render(); return; }
     if (pendingActions.has('biometric')) return;
@@ -867,7 +881,7 @@
   }
 
   function customerLoginForm() {
-    if (isLive()) return '<form id="customer-login-form" class="card" novalidate><div class="info-callout"><strong>One sign-in:</strong> Customers see their bookings; authorised administrators receive management controls automatically.</div><div class="field"><label for="customer-email">Email</label><input id="customer-email" name="email" type="email" autocomplete="username" required></div><div class="field"><label for="customer-password">Password</label><input id="customer-password" name="password" type="password" autocomplete="current-password" required></div><span id="customer-login-error" class="field-error"></span><button class="btn btn-primary btn-block" type="submit">Sign in</button><button type="button" class="btn btn-ghost btn-block" data-action="forgot-password">Reset password</button></form>';
+    if (isLive()) return '<form id="customer-login-form" class="card" novalidate>' + biometricSignInControl() + '<p class="signin-password-label">Or use your password</p><div class="field"><label for="customer-email">Email</label><input id="customer-email" name="email" type="email" autocomplete="username" required></div><div class="field"><label for="customer-password">Password</label><input id="customer-password" name="password" type="password" autocomplete="current-password" required></div><span id="customer-login-error" class="field-error"></span><button class="btn btn-primary btn-block" type="submit">Sign in</button><button type="button" class="btn btn-ghost btn-block" data-action="forgot-password">Reset password</button></form>';
     return '<div class="card"><div class="info-callout"><strong>Fictional local demo:</strong> Choose a role below. Demo access uses no password, PIN or remote account.</div><button class="btn btn-primary btn-block" data-action="demo-login" data-demo-role="customer">Continue as customer demo</button><button class="btn btn-secondary btn-block" data-action="demo-login" data-demo-role="admin">Continue as administrator demo</button></div>';
   }
 

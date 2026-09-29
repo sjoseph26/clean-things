@@ -1,4 +1,4 @@
-# Release status - v0.6.6 - 29 September 2026
+# Release status - v0.6.7 - 29 September 2026
 
 **Candidate for controlled testing. Not a production-readiness sign-off.** The current source repairs the reproduced v0.5.5 defects and includes a compiled native build path. See [recorded evidence](evidence/README.md) for executed results and boundaries.
 
@@ -6,7 +6,7 @@
 
 The large refresh button has been removed. Live browsing screens now support a deliberate downward swipe from the top, with a compact loading indicator. Short, horizontal and cancelled gestures do not refresh. Forms, modal dialogs, nested scroll areas and overlapping requests are protected. A keyboard/screen-reader action remains available.
 
-Android version code is 18. Real-phone gesture and upgrade checks remain outstanding. Earlier evidence under `docs/evidence` records previous builds; see the new pull-to-refresh tests for this change.
+Android version code is 19. Real-phone gesture and upgrade checks remain outstanding. Earlier evidence under `docs/evidence` records previous builds; see the new pull-to-refresh tests for this change.
 
 ## Completed in this repair
 
@@ -92,3 +92,11 @@ The reporting phone showed a generic storage error when enabling biometrics in v
 112 automated tests passed; Java/D8 compilation and final APK v2/v3 signing passed. Packaged assets match source. The unchanged browser UI retains v0.6.5's 141-result evidence; it was not rerun for this native-only change. No real biometric device, server auth settings or live database was accessed. Staged administrator MFA remains inactive.
 
 Artifact: `CleanThings-Live-v0.6.6.apk`; package `gy.cleanthings.app`, code 18; SHA-256 `24b2c6f25624ac9746b61a63edaf6e09873eaee1f0646080e687d8327dddc39e`. Original signing certificate retained. Install over v0.6.5 for the reporting phone's retry; this supersedes v0.6.5 as the biometric feature candidate. Randy's baseline and main remain unchanged.
+
+## v0.6.7 visible biometric sign-in control
+
+Added a vector fingerprint and labelled biometric sign-in button above the password fields, plus matching fingerprint artwork on the protected-session unlock screen. Unconfigured/unsupported states show an accessible inline explanation; no authentication is attempted before setup. Existing crypto, session cleanup and administrator MFA rules remain unchanged. Includes the v0.6.6 native hotfix.
+
+112 automated tests and 36 affected Chromium screen/state checks passed (three widths, two themes), with zero selected-rule accessibility violations or runtime errors. The unaffected browser workflow was not rerun. Java/D8 compilation, source-asset comparison and APK v2/v3 signature checks passed. Native recognition still needs the reporting phone's retry. No live database or auth settings changed.
+
+Artifact: `CleanThings-Live-v0.6.7.apk`; package `gy.cleanthings.app`, code 19; SHA-256 `10c26b0b48967de19e3369ce80f07ccfeb8950208b6aea6c91a861cd0b620654`. Original signing certificate retained. Update over the existing feature build; administrator MFA activation remains pending.

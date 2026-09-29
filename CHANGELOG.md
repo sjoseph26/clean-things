@@ -1,5 +1,12 @@
 # Change log
 
+## 0.6.7 biometric sign-in entry — 29 September 2026
+
+- Show a fingerprint icon and “Sign in with biometrics” button at the top of the sign-in form, above password fields.
+- Use the same vector fingerprint on the protected-session welcome screen and its sign-in button, avoiding missing emoji glyphs.
+- If biometrics are not enabled, tapping gives inline password-first setup guidance without attempting authentication. Unsupported devices show their availability explanation.
+- Retain the v0.6.6 native fix, password fallback and server MFA requirements. Android code 19.
+
 ## 0.6.6 biometric hotfix — 29 September 2026
 
 - Defer authenticated AES-GCM additional-data processing until Android reports biometric success. Doing this before the prompt can cache an unauthenticated-key failure and break setup or unlock even after recognition succeeds.

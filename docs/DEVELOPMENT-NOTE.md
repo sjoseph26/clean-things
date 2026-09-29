@@ -1,4 +1,4 @@
-# Technical design - v0.6.6
+# Technical design - v0.6.7
 
 ## Components and boundaries
 
@@ -78,3 +78,7 @@ See [device acceptance and limitations](BIOMETRIC-UNLOCK.md). Native API usage w
 ## Android authenticated-operation ordering hotfix (v0.6.6)
 
 Cipher initialization remains before `BiometricPrompt.authenticate` so Android can authorise that exact operation. `updateAAD` and `doFinal` occur only inside `BiometricEnvelope.create/unwrap` after the successful CryptoObject identity check. AAD is submitted exactly once, retaining the v1 envelope layout. The IV is captured before finalization. Android's [Keystore cipher implementation](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/main/keystore/java/android/security/keystore2/AndroidKeyStoreCipherSpiBase.java) can cache AAD-operation errors and raise them at `doFinal`; JVM software-only round trips did not exercise this auth boundary. `BiometricAuthOrderTest` now models that behaviour with real AES-GCM behind a gated CipherSpi, and `BIO-11` checks the native preparation boundary. Safe fixed stage codes distinguish proof/read/key/wrap/save/cleanup failures without returning raw exception messages.
+
+## Biometric sign-in entry (v0.6.7)
+
+A reusable inline SVG fingerprint appears in `biometricSignInControl` and `renderBiometricUnlock`. The normal sign-in form places it above the password fields. The `signin` action routes eligible saved sessions to the existing unlock handler; unavailable/unconfigured states display setup guidance in an accessible status region. The SVG is decorative and hidden from assistive technology; the labelled button remains keyboard accessible. Native storage, crypto, cancellation and server MFA behaviour are unchanged.
