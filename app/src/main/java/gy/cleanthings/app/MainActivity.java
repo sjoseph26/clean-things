@@ -8,6 +8,8 @@ import android.graphics.Color;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.SystemClock;
+import android.view.WindowManager;
 import android.view.Window;
 import android.webkit.GeolocationPermissions;
 import android.webkit.ValueCallback;
@@ -27,6 +29,8 @@ public class MainActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST = 4102;
     private static final int LOCATION_PERMISSION_REQUEST = 4103;
     private WebView webView;
+    private long stoppedAt;
+    private boolean backgrounded;
     private SessionVault sessionVault;
     private ValueCallback<Uri[]> pendingFileCallback;
     private String pendingGeolocationOrigin;
@@ -41,7 +45,12 @@ public class MainActivity extends Activity {
         window.setNavigationBarColor(Color.WHITE);
 
         webView = new WebView(this);
-        sessionVault = new SessionVault(this);
+        sessionVault = new SessionVault(this, payload -> {
+            if (webView == null || isFinishing() || isDestroyed()) return;
+            updatePrivacyFlag();
+            webView.evaluateJavascript("window.dispatchEvent(new CustomEvent('cleanthings:biometric-result',{detail:" + payload + "}))", null);
+        });
+        updatePrivacyFlag();
         webView.addJavascriptInterface(sessionVault, "CleanThingsNativeSession");
         setContentView(webView);
 
@@ -141,11 +150,34 @@ public class MainActivity extends Activity {
             }
         });
 
-        if (savedInstanceState == null) {
-            webView.loadUrl(APP_URL);
-        } else {
-            webView.restoreState(savedInstanceState);
+        // Recreate the document after process/activity restoration; never restore an unlocked DOM.
+        webView.loadUrl(APP_URL);
+    }
+
+    private void updatePrivacyFlag() {
+        if (sessionVault != null && sessionVault.biometricEnabled())
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+        else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
+    }
+
+    @Override
+    protected void onStop() {
+        stoppedAt = SystemClock.elapsedRealtime(); backgrounded = true;
+        super.onStop();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (backgrounded && sessionVault != null && sessionVault.biometricEnabled()
+                && SystemClock.elapsedRealtime() - stoppedAt >= 60000) {
+            // Retire the old bridge permanently. Late responses cannot save through it.
+            sessionVault.setTrustedDocument(false);
+            if (webView != null) webView.setVisibility(android.view.View.INVISIBLE);
+            recreate();
         }
+        backgrounded = false;
+        updatePrivacyFlag();
     }
 
     private boolean openExternalUrl(Uri uri) {
@@ -231,6 +263,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         if (sessionVault != null) sessionVault.setTrustedDocument(false);
+        if (pendingFileCallback != null) { pendingFileCallback.onReceiveValue(null); pendingFileCallback = null; }
         if (webView != null) {
             webView.removeJavascriptInterface("CleanThingsNativeSession");
             webView.destroy();

@@ -138,6 +138,37 @@ async function inspect(page,name,width,theme,screenshot=false){
   }
   await context.close();
  }
+ for(const width of [360,393,412]) for(const theme of ['light','dark']){
+  const context=await browser.newContext({viewport:{width,height:873}});const page=await context.newPage();let protectedReads=0;
+  page.on('pageerror',e=>runtimeErrors.push(e.message));
+  await page.addInitScript(theme=>localStorage.setItem('cleanthings.prototype.v1',JSON.stringify({preferences:{theme}})),theme);
+  await page.route('**/*',async route=>{
+    const url=new URL(route.request().url());
+    if(url.pathname==='/session-store.js')return route.fulfill({contentType:'application/javascript',body:`(()=>{
+      let enabled=true,locked=true,active={access_token:'fixture',refresh_token:'fixture',expires_at:Math.floor(Date.now()/1000)+3600,user:{id:'user-1'}},attempt=0;
+      window.CleanThingsSessionStore={read:()=>locked?null:active,write:v=>active=v,clear:()=>{enabled=false;locked=false;active=null},
+      status:()=>({encrypted:true,persistent:true,message:'Your saved sign-in is encrypted on this device.',biometric:{available:true,enabled,locked,reason:''}}),
+      lock:()=>{locked=true},biometric:async action=>{if(action==='unlock' && attempt++===0)throw Error('Verification cancelled. Try again.');enabled=action!=='disable';locked=false}};
+    })();`});
+    if(url.hostname==='127.0.0.1')return route.continue();
+    let body=[];
+    if(url.pathname==='/rest/v1/profiles'){protectedReads++;body=[{user_id:'user-1',name:'Biometric tester',phone:'5926000000',email:'fixture@example.test',role:'customer'}];}
+    if(url.pathname==='/rest/v1/bookings' || url.pathname==='/rest/v1/receipts')protectedReads++;
+    return route.fulfill({contentType:'application/json',body:JSON.stringify(body)});
+  });
+  await page.goto(`http://127.0.0.1:${server.address().port}/`);await page.getByRole('heading',{name:'Unlock Clean Things'}).waitFor();
+  assert.equal(protectedReads,0);await inspect(page,'biometric-locked',width,theme,true);
+  await page.locator('[data-action=biometric-unlock]').click();await page.getByText('Verification cancelled. Try again.',{exact:true}).first().waitFor();
+  assert.equal(protectedReads,0);await inspect(page,'biometric-cancelled',width,theme);
+  await page.locator('[data-action=biometric-unlock]').click();await page.getByRole('heading',{name:'Sign-in protection'}).waitFor();
+  assert.ok(protectedReads>0);await inspect(page,'biometric-enabled',width,theme,true);
+  await page.locator('[data-action=biometric-disable]').click();await page.locator('[data-action=biometric-enable]').waitFor();
+  await inspect(page,'biometric-disabled',width,theme);
+  await page.locator('[data-action=biometric-enable]').click();await page.locator('[data-action=biometric-lock]').waitFor();await page.locator('[data-action=biometric-lock]').click();
+  await page.getByRole('heading',{name:'Unlock Clean Things'}).waitFor();await page.locator('[data-action=biometric-password]').click();
+  await page.locator('#customer-login-form').waitFor();assert.equal(await page.locator('[data-action=biometric-unlock]').count(),0);
+  await context.close();
+ }
  }finally{await browser.close();server.close();fs.writeFileSync(path.join(out,'results.json'),JSON.stringify({results,violations,runtimeErrors,note:'Chromium with mocked remote responses and simulated GPS; not live/device certification.'},null,2));}
  assert.deepEqual(runtimeErrors,[],'Browser runtime errors');
  assert.equal(violations.length,0,'Accessibility issues: inspect test-results/browser/results.json');

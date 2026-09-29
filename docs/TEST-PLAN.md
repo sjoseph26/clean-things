@@ -1,4 +1,4 @@
-# Test plan and evidence index - v0.6.4
+# Test plan and evidence index - v0.6.5
 
 Run from the repository root with generated demo configuration and `npm ci`. All automated test data is fictional. Exact command, result and source hashes are recorded in [the evidence summary](evidence/README.md). A passing local result does not imply a deployed result.
 
@@ -71,3 +71,9 @@ On a test phone, upgrade an existing signed-in v0.6.2 installation to v0.6.3, ch
 `MFA-API-01..10` cover challenge/verify payloads and token persistence, malformed input, wrong codes, verification throttling, logout/account-switch races, concurrent requests, enrolment gates, transient secrets, guarded cancellation and absent enforcement. `MFA-UI-01..05` cover protected-data gating, blocked rollout state, setup/no-secret-persistence, duplicate submission, wrong codes, logout and required post-verification server authorization. `MFA-DB` runs the staged SQL twice against an older-schema fixture and verifies direct RLS/RPC denials for password-only admins, customers and stale factorless AAL2 sessions. The full database suite also runs the migration with its other real policies.
 
 The browser suite exercises new-admin enrolment and returning-admin challenge, wrong then correct codes, a backup authenticator and the existing booking flows in both themes at three phone widths. Test codes and QR images are fixtures. Run [hosted and phone acceptance](ADMIN-MFA-ROLLOUT.md) before deployment.
+
+## Biometric verification (v0.6.5)
+
+`BIO-01..06` exercise the JS/native contract: locked plaintext migration denial, callback correlation, forged-success denial, cancellation/retry, password fallback, duplicate requests, enable/refresh/lock/disable. `BIO-07` executes the actual Java envelope with a JVM AES provider and checks modified headers/payloads, wrong keys, truncation and token rotation. `BIO-08` is a static Android boundary contract, not proof of runtime hardware behaviour. `BIO-09..10` cover backend logout and serialization with refresh/requests. `BIO-UI-01..06` exercise bootstrap/back navigation gating, cancellation/duplicates, mandatory server MFA after unlock, fallback races, network-failure retry and the successful customer account route.
+
+Browser tests simulate the native adapter in six viewport/theme combinations and inspect locked, cancelled, enabled and disabled screens, plus enable/lock/password actions. Hardware recognition, key invalidation and real lifecycle tests remain in [BIOMETRIC-UNLOCK.md](BIOMETRIC-UNLOCK.md).

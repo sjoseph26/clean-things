@@ -1,4 +1,4 @@
-# Technical design - v0.6.4
+# Technical design - v0.6.5
 
 ## Components and boundaries
 
@@ -66,3 +66,11 @@ Reference design guidance: [Android Keystore](https://developer.android.com/priv
 The account bootstrap checks `admin_mfa_status()` before querying privileged records. A pending-MFA state holds only the current user's profile and transient enrolment/factor metadata, clears admin records and pins navigation to verification. Backend TOTP methods use `/auth/v1/factors`, `/challenge`, `/verify`, and the authoritative `/auth/v1/user` factor list. Verification validates six-digit input, serializes with refresh, preserves leading zeroes, checks login-generation races and saves the newly issued session before the server authorisation recheck. Error paths never infer admin access from a successful-looking client response. Setup uses a QR image/manual key, verified-factor selection and guarded cancellation of unfinished factors.
 
 The standalone SQL migration tightens the existing `is_admin()` dependency shared by RLS and privileged RPCs; it leaves customer ownership policies intact. This is staged deployment work: neither live database enforcement nor actual factor enrolment has been performed. See [the rollout guide](ADMIN-MFA-ROLLOUT.md).
+
+## Biometric saved-session protection (v0.6.5)
+
+`BiometricEnvelope` stores an authenticated wrapping IV/key and a separately authenticated `SessionCipher` payload in the existing no-backup atomic session file. `SessionVault` selects the envelope by version, binds each prompt to a generation, uses strong auth-per-operation Keystore cryptography, and retains the unwrapped key only in memory. Refresh writes replace the encrypted payload without another prompt. Successful opt-in destroys the former ordinary storage key. Unlock/disable use an authenticated decrypt operation. Read/write deny a locked envelope.
+
+The session adapter distinguishes a locked session from corrupt storage, drops leftover plaintext, correlates fixed native events, and requires native status plus a readable native session after success. Backend token rotation and prompts serialize; logout invalidates outstanding operations. The UI gate runs before bootstrap/profile/business reads; unlock then uses the existing `activateAccount` and MFA flow. `MainActivity` retires its bridge and recreates the document after a 60-second background gap. Screenshots are disabled while the native envelope is biometric-protected.
+
+See [device acceptance and limitations](BIOMETRIC-UNLOCK.md). Native API usage was checked against Android's [biometric guide](https://developer.android.com/identity/sign-in/biometric-auth) and [Keystore key parameters](https://developer.android.com/reference/android/security/keystore/KeyGenParameterSpec.Builder).

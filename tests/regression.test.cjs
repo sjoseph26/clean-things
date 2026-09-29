@@ -13,6 +13,7 @@ async function setup(options={}) {
   const w=dom.window; w.scrollTo=()=>{}; const calls=[];
   let active=options.guest?null:{user:{id:'user-1'}};
   const backend={enabled:()=>true,session:()=>active,
+    sessionStorageStatus:()=>({biometric:options.biometric||{},message:"Saved sign-in is encrypted."}),
     listServices:async()=>{calls.push('services');return [service]},
     listPublicSettings:async()=>{calls.push('settings');return [{key:'business_name',value:'Test Business'}]},
     getMyProfile:async()=>{calls.push('profile');return active?{user_id:'user-1',name:'Fixture',phone:'5926000000',email:'a@example.test',role:options.admin?'admin':'customer'}:null},
@@ -28,7 +29,7 @@ async function setup(options={}) {
   w.eval(fs.readFileSync(root+'pull-refresh.js','utf8'));
   const code=fs.readFileSync(root+'app.js','utf8');
   assert.ok(code.endsWith('})();\n'));
-  w.eval(code.replace('  bootstrapBackend();\n})();',`window.audit={get state(){return state},get ui(){return ui},get services(){return services},render,navigate,bootstrapBackend,openLocationPicker,handleAdminAction,submitPayment,openEditCustomer,openServiceEditor,showServiceDetails,submitCustomerCreate,currentAccount,loadAvailability,activateAccount,logout,submitAdminSettings,openEditProfile,openEditBooking,submitCustomerLogin,refreshAuthControls,requireAdminMfa,submitMfa,handleMfaAction};window.auditReady=bootstrapBackend();})();`));
+  w.eval(code.replace('  bootstrapBackend();\n})();',`window.audit={get state(){return state},get ui(){return ui},get services(){return services},render,navigate,bootstrapBackend,openLocationPicker,handleAdminAction,submitPayment,openEditCustomer,openServiceEditor,showServiceDetails,submitCustomerCreate,currentAccount,loadAvailability,activateAccount,logout,submitAdminSettings,openEditProfile,openEditBooking,submitCustomerLogin,refreshAuthControls,requireAdminMfa,submitMfa,handleMfaAction,handleBiometric};window.auditReady=bootstrapBackend();})();`));
   await w.auditReady;
   return {w,a:w.audit,backend,calls,close:()=>w.close(),setSession:v=>active=v};
 }
@@ -196,5 +197,46 @@ test('MFA-UI-05 a verification response cannot unlock admin when server authoriz
   t.setSession({user:{id:'user-1'}});t.backend.adminMfaStatus=async()=>({enforced:true,required:true,verified:false});t.backend.listMfaFactors=async()=>[{id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',status:'verified'}];
   await t.a.activateAccount(await t.backend.getMyProfile());t.a.render();t.backend.verifyMfa=async()=>true;
   const form=t.w.document.getElementById('mfa-form');form.querySelector('input').value='123456';await t.a.submitMfa({preventDefault(){},currentTarget:form});assert.equal(t.a.currentAccount(),null);assert.equal(t.a.ui.screen,'mfa');assert.doesNotMatch(t.w.document.getElementById('app-main').textContent,/Business overview/);
+ }finally{t.close()}
+});
+
+test('BIO-UI-01 locked startup reads no account data, hides navigation and keeps back navigation locked',async()=>{
+ const bio={available:true,enabled:true,locked:true};const t=await setup({biometric:bio});try{
+  assert.equal(t.a.ui.screen,'unlock');assert.deepEqual(t.calls,[]);assert.equal(t.w.document.querySelector('#bottom-nav').textContent,'');
+  t.a.navigate('home');assert.equal(t.a.ui.screen,'unlock');assert.equal(t.a.currentAccount(),null);
+  assert.match(t.w.document.body.textContent,/Use password sign-in/);
+ }finally{t.close()}
+});
+test('BIO-UI-02 cancelled unlock stays locked and duplicate taps open only one prompt',async()=>{
+ const bio={available:true,enabled:true,locked:true};const t=await setup({biometric:bio});try{
+  let rejectPrompt,count=0;t.backend.biometricAction=()=>{count++;return new Promise((_,reject)=>rejectPrompt=reject)};
+  const first=t.a.handleBiometric('unlock');await t.a.handleBiometric('unlock');assert.equal(count,1);
+  rejectPrompt(Error('Verification cancelled'));await first;assert.equal(t.a.currentAccount(),null);assert.equal(t.a.ui.screen,'unlock');assert.match(t.w.document.querySelector('#biometric-error').textContent,/cancelled/);
+ }finally{t.close()}
+});
+test('BIO-UI-03 restored admin still reaches the server MFA gate before any privileged records load',async()=>{
+ const bio={available:true,enabled:true,locked:true};const t=await setup({biometric:bio,admin:true});try{
+  let reads=0;t.backend.biometricAction=async()=>{bio.locked=false};t.backend.adminMfaStatus=async()=>({enforced:true,required:true,verified:false});
+  t.backend.listBookings=t.backend.listProfiles=t.backend.listReceipts=async()=>{reads++;return []};
+  await t.a.handleBiometric('unlock');assert.equal(reads,0);assert.equal(t.a.currentAccount(),null);assert.equal(t.a.ui.screen,'mfa');assert.equal(t.a.ui.biometricResumePending,false);
+ }finally{t.close()}
+});
+test('BIO-UI-04 password fallback cancels a pending unlock and late completion cannot restore identity',async()=>{
+ const bio={available:true,enabled:true,locked:true};const t=await setup({biometric:bio});try{
+  let done;t.backend.biometricAction=()=>new Promise(r=>done=r);t.backend.signOut=async()=>{bio.enabled=false;bio.locked=false;t.setSession(null)};
+  const first=t.a.handleBiometric('unlock');await t.a.handleBiometric('password');done();await first;
+  assert.equal(t.a.ui.screen,'account');assert.equal(t.a.currentAccount(),null);assert.ok(t.w.document.querySelector('#customer-login-form'));
+ }finally{t.close()}
+});
+test('BIO-UI-05 a network error after native unlock preserves the retry and password controls',async()=>{
+ const bio={available:true,enabled:true,locked:true};const t=await setup({biometric:bio});try{
+  t.backend.biometricAction=async()=>{bio.locked=false};t.backend.getMyProfile=async()=>{throw Error('Connection unavailable')};
+  await t.a.handleBiometric('unlock');assert.equal(t.a.ui.screen,'unlock');assert.equal(t.a.currentAccount(),null);assert.match(t.w.document.querySelector('#biometric-error').textContent,/Connection unavailable/);
+ }finally{t.close()}
+});
+test('BIO-UI-06 successful customer unlock opens account controls instead of retaining the locked route',async()=>{
+ const bio={available:true,enabled:true,locked:true};const t=await setup({biometric:bio});try{
+  t.backend.biometricAction=async()=>{bio.locked=false};await t.a.handleBiometric('unlock');
+  assert.equal(t.a.ui.screen,'account');assert.equal(t.a.ui.biometricResumePending,false);assert.equal(t.a.currentAccount().id,'user-1');assert.ok(t.w.document.querySelector('[data-action=biometric-lock]'));
  }finally{t.close()}
 });

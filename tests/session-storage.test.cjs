@@ -73,6 +73,6 @@ test('STORE-11 native trust boundary excludes remote documents, child frames and
  const activity=fs.readFileSync('app/src/main/java/gy/cleanthings/app/MainActivity.java','utf8');const vault=fs.readFileSync('app/src/main/java/gy/cleanthings/app/SessionVault.java','utf8');const html=fs.readFileSync('app/src/main/assets/index.html','utf8');const manifest=fs.readFileSync('app/src/main/AndroidManifest.xml','utf8');
  assert.match(activity,/request\.isForMainFrame\(\) && !isTrustedDocument\(uri\)/);assert.match(activity,/setTrustedDocument\(isTrustedDocument/);assert.match(activity,/removeJavascriptInterface/);
  assert.match(html,/frame-src 'none'/);assert.match(html,/worker-src 'none'/);assert.match(vault,/getNoBackupFilesDir/);assert.match(vault,/AndroidKeyStore/);assert.match(vault,/setRandomizedEncryptionRequired\(true\)/);assert.match(manifest,/android:allowBackup="false"/);
- assert.equal((vault.match(/@JavascriptInterface/g)||[]).length,3);assert.equal((vault.match(/if \(!trustedDocument\) return failure\(\);/g)||[]).length,3);
+ assert.equal((vault.match(/@JavascriptInterface/g)||[]).length,6);assert.equal((vault.match(/if \(!trustedDocument\) return failure\(\);/g)||[]).length,6);
  assert.ok(html.indexOf('session-store.js')<html.indexOf('backend.js'));
 });

@@ -1,4 +1,4 @@
-# Deployment and recovery guide - v0.6.4
+# Deployment and recovery guide - v0.6.5
 
 This guide describes the prepared candidate. No production database change or GitHub publication was performed during this repair.
 
@@ -61,3 +61,7 @@ This feature candidate migrates the Android saved session to Keystore-backed enc
 ## v0.6.4 administrator MFA rollout
 
 Read [the MFA rollout guide](ADMIN-MFA-ROLLOUT.md) before using this candidate for administrators. Its management screens require the staged server enforcement function; they remain locked until that migration is deployed. Coordinate all admin device upgrades and staging/owner acceptance before activating it on production. Randy can continue testing v0.6.2 in the meantime. This build includes the v0.6.3 encrypted-session changes. Customers do not need administrator MFA.
+
+## v0.6.5 biometric candidate
+
+No extra SQL migration or server setting is needed for device biometric unlock. It is optional per saved account/device, requires Android 11+ and an enrolled Class 3 biometric, and must pass [real-phone acceptance](BIOMETRIC-UNLOCK.md). This build includes v0.6.4's staged administrator MFA requirement: admins remain blocked until its separate coordinated server activation. Keep Randy on the existing tester build meanwhile.

@@ -86,6 +86,7 @@
     adminStatus: "All",
     adminMonth: "",
     mfa: null,
+    biometricResumePending: false,
     accountMode: "signin",
     authNotice: "",
     pendingBookingServiceId: null,
@@ -212,6 +213,7 @@
 
   async function bootstrapBackend() {
     if (!isLive()) return;
+    if (biometricState().locked) { render(); return; }
     const epoch = authEpoch;
     ui.backendStatus = "connecting";
     render();
@@ -516,6 +518,7 @@
   }
 
   function navigate(screen, options) {
+    if (biometricState().locked || ui.biometricResumePending) { render(); return; }
     options = options || {};
     if ((screen === "booking" || screen === "bookings" || screen === "payment") && !currentAccount()) {
       routeToAccount(screen === "bookings" ? "Sign in or create an account to view your bookings." : "Sign in or create an account before booking a service.", options.serviceId || "");
@@ -728,7 +731,37 @@
   function sessionSecurityCard() {
     if (!isLive() || !Backend.sessionStorageStatus) return "";
     const storage = Backend.sessionStorageStatus();
-    return '<div class="card"><h3>Sign-in protection</h3><p>' + Core.safeText(storage.message) + '</p></div>';
+    const bio = biometricState();
+    const controls = bio.enabled ? '<button class="btn btn-primary btn-block" data-action="biometric-lock">Lock now</button><button class="btn btn-secondary btn-block" data-action="biometric-disable">Turn off biometric unlock</button>' : bio.available ? '<button class="btn btn-primary btn-block" data-action="biometric-enable">Enable biometric unlock</button>' : '<p class="meta">' + Core.safeText(bio.reason || '') + '</p>';
+    return '<div class="card"><h3>Sign-in protection</h3><p>' + Core.safeText(storage.message) + '</p><h4>Biometric unlock' + (bio.enabled ? ' · On' : '') + '</h4><p>Use your device’s secure fingerprint or supported face unlock. Locks after an app restart or one minute in the background. Anyone enrolled on this device can unlock it. Admin two-step verification still applies.</p>' + controls + '</div>';
+  }
+
+  function biometricState() {
+    return isLive() && Backend.sessionStorageStatus ? Backend.sessionStorageStatus().biometric || {} : {};
+  }
+  function renderBiometricUnlock() {
+    const bio = biometricState();
+    return '<div class="page"><div class="account-welcome"><div class="service-icon">🔒</div><h2>Unlock Clean Things</h2><p>Your saved sign-in is protected on this device.</p></div><div class="card"><p>' + Core.safeText(bio.available ? 'Verify with your fingerprint or supported face unlock to continue.' : bio.reason || 'Use password sign-in to continue.') + '</p><p id="biometric-error" class="field-error" role="alert">' + Core.safeText(ui.biometricError || '') + '</p>' + (bio.available ? '<button class="btn btn-primary btn-block" data-action="biometric-unlock"' + (pendingActions.has('biometric') ? ' disabled' : '') + '>Unlock with biometrics</button>' : '') + '<button class="btn btn-secondary btn-block" data-action="biometric-password">Use password sign-in</button><p class="meta">Password sign-in removes this saved session and its biometric setting. You can enable it again after signing in.</p></div></div>';
+  }
+  async function handleBiometric(action) {
+    if (action === 'password') { ui.biometricError = ''; ui.biometricResumePending = false; await logout(); return; }
+    if (action === 'lock') { Backend.lockSession(); closeModal(); ui.biometricError = ''; render(); return; }
+    if (pendingActions.has('biometric')) return;
+    pendingActions.add('biometric'); const epoch = authEpoch; ui.biometricError = '';
+    document.querySelectorAll('[data-action^="biometric-"]:not([data-action="biometric-password"])').forEach(function (b) { b.disabled = true; });
+    try {
+      await Backend.biometricAction(action);
+      if (epoch !== authEpoch) return;
+      const profile = await Backend.getMyProfile();
+      if (epoch !== authEpoch) return;
+      if (!profile) throw new Error('Your account could not be loaded. Use password sign-in.');
+      const account = await activateAccount(profile);
+      if (epoch !== authEpoch) return;
+      if (action === 'unlock') { ui.biometricResumePending = false; if (account) ui.screen = 'account'; finishAccountEntry(account); }
+      showToast(action === 'enable' ? 'Biometric unlock enabled.' : action === 'disable' ? 'Biometric unlock turned off.' : 'Saved sign-in unlocked.');
+    } catch (error) {
+      if (epoch === authEpoch) { ui.biometricError = error.message; showToast(error.message); }
+    } finally { pendingActions.delete('biometric'); if (epoch === authEpoch) render(); }
   }
 
   async function requireAdminMfa(profile, backup) {
@@ -925,6 +958,12 @@
 
   function render() {
     applyTheme();
+    if (biometricState().locked || ui.biometricResumePending) {
+      ui.biometricResumePending = true;
+      if (ui.screen !== 'unlock' || state.accounts.length) { clearIdentity(); closeModal(); }
+      ui.screen = 'unlock'; renderTopbar(); topbar.querySelector('button').remove(); bottomNav.innerHTML = ''; main.innerHTML = renderBiometricUnlock();
+      document.getElementById('accessible-refresh').hidden = true; return;
+    }
     if (ui.mfa) ui.screen = "mfa";
     renderTopbar();
     renderBottomNav();
@@ -1785,6 +1824,7 @@
         persistAndRender("Request sent to the admin dashboard.");
       }
     }
+    else if (action.startsWith("biometric-")) await handleBiometric(action.substring(10));
     else if (action === "account-mode") { ui.accountMode = button.dataset.mode; render(); }
     else if (action === "demo-login" && !isLive()) {
       const account = state.accounts.find(function (item) { return item.role === button.dataset.demoRole; });

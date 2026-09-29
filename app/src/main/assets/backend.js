@@ -6,6 +6,7 @@
   let refreshPromise = null;
   let refreshGeneration = -1;
   let sessionGeneration = 0;
+  let biometricPromise = null;
   const AUTH_RETRY_KEY = "cleanthings.auth.retry.v1";
   let authRetryUntil = {};
   try {
@@ -106,6 +107,7 @@
   }
 
   async function refreshSessionIfNeeded(force) {
+    if (biometricPromise) { await biometricPromise; return session(); }
     if (mfaVerification && mfaGeneration === sessionGeneration) { await mfaVerification; return session(); }
     const active = session();
     if (!active || !active.refresh_token) return active;
@@ -198,6 +200,24 @@
     try {
       if (active) await request("/auth/v1/logout?scope=local", { method: "POST", skipRefresh: true, headers: { Authorization: "Bearer " + active.access_token } });
     } finally { if (storageError) throw storageError; }
+  }
+
+  async function biometricAction(action) {
+    if (biometricPromise) throw new Error("Biometric verification is already open.");
+    const generation = sessionGeneration;
+    // Let token rotation finish before native enrolment captures the current session.
+    if (refreshPromise) await refreshPromise;
+    if (mfaVerification) await mfaVerification;
+    if (generation !== sessionGeneration) throw new Error("Your session changed. Sign in again.");
+    if (biometricPromise) throw new Error("Biometric verification is already open.");
+    const pending = sessionStore.biometric(action);
+    biometricPromise = pending;
+    try {
+      await pending;
+      if (generation !== sessionGeneration) throw new Error("Verification cancelled.");
+    } finally { if (biometricPromise === pending) biometricPromise = null; }
+    // The restored session still has to pass provider expiry and account-role checks.
+    return refreshSessionIfNeeded();
   }
 
   async function adminMfaStatus() {
@@ -519,6 +539,12 @@
     authRetrySeconds: authRetrySeconds,
     session: session,
     sessionStorageStatus: function () { return sessionStore.status(); },
+    biometricAction: biometricAction,
+    lockSession: function () {
+      sessionGeneration += 1;
+      sessionStore.lock();
+      if (root.dispatchEvent && root.Event) root.dispatchEvent(new root.Event("cleanthings:session-ended"));
+    },
     adminMfaStatus: adminMfaStatus,
     listMfaFactors: listMfaFactors,
     enrollMfa: enrollMfa,

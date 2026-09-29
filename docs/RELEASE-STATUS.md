@@ -1,4 +1,4 @@
-# Release status - v0.6.4 - 29 September 2026
+# Release status - v0.6.5 - 29 September 2026
 
 **Candidate for controlled testing. Not a production-readiness sign-off.** The current source repairs the reproduced v0.5.5 defects and includes a compiled native build path. See [recorded evidence](evidence/README.md) for executed results and boundaries.
 
@@ -6,7 +6,7 @@
 
 The large refresh button has been removed. Live browsing screens now support a deliberate downward swipe from the top, with a compact loading indicator. Short, horizontal and cancelled gestures do not refresh. Forms, modal dialogs, nested scroll areas and overlapping requests are protected. A keyboard/screen-reader action remains available.
 
-Android version code is 16. Real-phone gesture and upgrade checks remain outstanding. Earlier evidence under `docs/evidence` records previous builds; see the new pull-to-refresh tests for this change.
+Android version code is 17. Real-phone gesture and upgrade checks remain outstanding. Earlier evidence under `docs/evidence` records previous builds; see the new pull-to-refresh tests for this change.
 
 ## Completed in this repair
 
@@ -76,3 +76,11 @@ The staged `202609290002_admin_mfa.sql` transaction requires the protected admin
 Verification: 95 automated tests passed, including direct RLS/RPC enforcement on older-schema and full-migration fixtures, malformed/wrong codes, rate limits, token renewal serialization, logout/account-switch races and UI gates. All 117 Chromium state/timing results passed across three phone widths and both themes, with zero selected-rule accessibility violations or runtime errors. Provider responses and QR data were mocked. Java/D8 native compilation and APK v2/v3 verification passed; packaged assets match source. The original signing certificate is retained.
 
 Artifact: `CleanThings-Live-v0.6.4.apk`; package `gy.cleanthings.app`, Android version code 16. APK SHA-256: `4311bb88d8828b8afd893e952679838a043a02e6f0b765dd3b745264e12778bb`. This is a feature-test candidate, not an activated live MFA release. Staging/provider/phone acceptance and coordinated admin upgrades must precede owner-approved live enforcement. The new app keeps admin management locked until server activation. See [activation and recovery instructions](ADMIN-MFA-ROLLOUT.md).
+
+## v0.6.5 biometric unlock feature candidate
+
+Implemented on `feature/biometric-unlock`, based on the staged administrator MFA feature. Adds optional Android 11+ strong fingerprint/supported-face unlock, an auth-per-operation Keystore-wrapped session key, opt-in and verified opt-out, manual lock, password fallback, and a fresh locked Activity after a 60-second background gap. Screenshots/recent-app previews are suppressed while enabled. Session refresh is serialized with verification; late/cancelled callbacks cannot restore an erased account. Native unlock still passes through server session, role and MFA checks.
+
+Verification: 111 automated tests passed. These execute the real Java AES envelope and simulated JS/native/provider flows, plus static Android boundary contracts. Java/D8 compilation and final APK v2/v3 signature verification passed. Packaged assets match tested source, and the original signing certificate is retained. Real device recognition, Keystore invalidation, background behaviour and upgrade/file-picker flows remain unverified; see [device acceptance](BIOMETRIC-UNLOCK.md). All 141 Chromium state/timing results passed across three phone widths and both themes, with zero selected-rule accessibility violations or runtime errors. Biometric prompts and remote responses were simulated.
+
+Artifact: `CleanThings-Live-v0.6.5.apk`; package `gy.cleanthings.app`, Android code 17. SHA-256: `82a3e3b3b164adcb5342f4222aaeaa26e252e4fd4c09c12b550ed72a66e6d3fa`. This is a feature-test build. No live database/auth configuration changes were made. Because it includes staged MFA, administrator access still awaits coordinated server activation; Randy should keep the existing tester build.

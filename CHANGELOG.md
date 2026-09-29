@@ -1,5 +1,14 @@
 # Change log
 
+## 0.6.5 biometric feature candidate — 29 September 2026
+
+- Opt in to secure fingerprint or supported face unlock from Account → Sign-in protection on Android 11+.
+- Require a Keystore auth-per-use cryptographic operation to wrap/unwrap the session key; protect refreshed sessions with the same biometric-wrapped key.
+- Lock saved sessions after activity/process recreation, Lock now, or return after at least 60 seconds in the background. Prevent screenshots while enabled.
+- Offer a clear password fallback that deletes the local session and biometric preference. Verify biometrics again before disabling protection; require re-enrolment after Android invalidates the key.
+- Preserve the server administrator MFA boundary; no live database/auth changes. This candidate includes staged MFA and is not a replacement for Randy's active test build.
+- Android code 17. Actual biometric hardware and lifecycle acceptance remain pending; see `docs/BIOMETRIC-UNLOCK.md`.
+
 ## 0.6.4 MFA feature candidate — 29 September 2026
 
 - Add administrator authenticator setup, code verification, backup-factor selection and identity-checked recovery guidance.
