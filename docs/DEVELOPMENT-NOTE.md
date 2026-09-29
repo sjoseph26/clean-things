@@ -1,4 +1,4 @@
-# Technical design - v0.6.0
+# Technical design - v0.6.1
 
 ## Components and boundaries
 
@@ -42,3 +42,7 @@ A receipt makes core financial/service fields immutable through the booking trig
 There is no verified background/offline write queue, push-notification delivery guarantee, password-recovery hosting or automatic orphan-file cleanup in this repository. CI is prepared but awaits its first actual GitHub run. These are documented deployment limits, not reported as completed tests.
 
 Reference: [Android WebView guidance](https://developer.android.com/develop/ui/views/layout/webapps/managing-webview), [PGlite snapshot API](https://pglite.dev/docs/api).
+
+## Refresh interaction (v0.6.1)
+
+`pull-refresh.js` owns the touch gesture and a single-request loading state; `app.js` determines eligible screens and reuses the existing backend refresh path. Refresh does not reload the WebView. The indicator is outside the rerendered content. The keyboard action appears on focus; live-region messages announce progress and outcome. Reduced-motion settings disable spinner animation.

@@ -35,7 +35,7 @@ async function inspect(page,name,width,theme,screenshot=false){
  try{
  for(const width of [360,393,412]) for(const theme of ['light','dark']){
   const context=await browser.newContext({viewport:{width,height:873},geolocation:{latitude:6.82,longitude:-58.16},permissions:['geolocation']});
-  const page=await context.newPage();let admin=false;let records=[];let uploadBytes=0;
+  const page=await context.newPage();let admin=false;let records=[];let uploadBytes=0;let serviceLoads=0;
   page.on('pageerror',e=>runtimeErrors.push(e.message));
   await page.addInitScript(theme=>localStorage.setItem('cleanthings.prototype.v1',JSON.stringify({preferences:{theme}})),theme);
   await page.route('**/*',async route=>{
@@ -46,7 +46,7 @@ async function inspect(page,name,width,theme,screenshot=false){
     const p=url.pathname;let body=[];
     if(p.startsWith('/auth/v1/token'))body={access_token:'fixture',refresh_token:'fixture',expires_at:Math.floor(Date.now()/1000)+3600,user:{id:'11111111-1111-4111-8111-111111111111'}};
     else if(p==='/rest/v1/profiles')body=[{user_id:'11111111-1111-4111-8111-111111111111',name:'Test Customer',phone:'5926000000',email:'customer@example.test',role:admin?'admin':'customer'}];
-    else if(p==='/rest/v1/services')body=[{id:'essential',name:'Essential Wash',icon:'🚙',price:3000,duration:'40 min',description:'Exterior wash and dry',includes:['Wash','Dry'],add_ons:[{id:'tyre-shine',name:'Tyre shine',description:'Finishing care',price:800}],enabled:true}];
+    else if(p==='/rest/v1/services'){serviceLoads++;body=[{id:'essential',name:'Essential Wash',icon:'🚙',price:3000,duration:'40 min',description:'Exterior wash and dry',includes:['Wash','Dry'],add_ons:[{id:'tyre-shine',name:'Tyre shine',description:'Finishing care',price:800}],enabled:true}];}
     else if(p==='/rest/v1/app_settings')body=[{key:'business_name',value:'Test Clean Things'},{key:'mmg_account_name',value:'Demo Merchant'},{key:'mmg_number',value:'000-0000'}];
     else if(p==='/rest/v1/rpc/appointment_availability')body=[{service_time:'10:00',status:'booked'}];
     else if(p==='/rest/v1/bookings')body=records;
@@ -59,6 +59,23 @@ async function inspect(page,name,width,theme,screenshot=false){
   });
   const start=performance.now();await page.goto(`http://127.0.0.1:${server.address().port}/`);await page.getByText('● Live database',{exact:true}).waitFor();const homeMs=performance.now()-start;
   await inspect(page,'home',width,theme,true);
+  assert.equal(await page.locator('.refresh-button').count(),0);
+  if(width===393){
+    const beforeRefresh=serviceLoads;
+    await page.evaluate(()=>{
+      const target=document.querySelector('#app-main h2')||document.querySelector('#app-main');
+      for(const [type,y] of [['touchstart',0],['touchmove',155]]){
+        const event=new Event(type,{bubbles:true,cancelable:true});Object.defineProperty(event,'touches',{value:[{clientX:100,clientY:y}]});target.dispatchEvent(event);
+      }
+    });
+    assert.equal(await page.locator('#pull-refresh-indicator').isVisible(),true);
+    await inspect(page,'pull-refresh',width,theme,true);
+    await page.evaluate(()=>{const event=new Event('touchend',{bubbles:true});Object.defineProperty(event,'touches',{value:[]});document.querySelector('#app-main').dispatchEvent(event);});
+    await page.waitForFunction(()=>document.getElementById('refresh-status').textContent==='Up to date.');
+    assert.equal(serviceLoads,beforeRefresh+1);
+    assert.equal(await page.locator('#pull-refresh-indicator').isVisible(),false);
+  }
+
   await page.locator('[data-screen=services]').first().click();await inspect(page,'services',width,theme);
   await page.locator('[data-screen=account]').click();await inspect(page,'signin',width,theme);
   await page.locator('[data-mode=create]').click();await inspect(page,'signup',width,theme);

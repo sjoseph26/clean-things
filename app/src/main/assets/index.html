@@ -11,6 +11,9 @@
 </head>
 <body>
   <a class="skip-link" href="#app-main">Skip to content</a>
+  <button id="accessible-refresh" class="skip-link" type="button" hidden>Refresh current view</button>
+  <div id="pull-refresh-indicator" class="pull-refresh-indicator" hidden aria-hidden="true"><span class="pull-refresh-spinner"></span></div>
+  <div id="refresh-status" class="sr-only" role="status" aria-live="polite"></div>
   <div id="app-shell">
     <header id="topbar" class="topbar"></header>
     <main id="app-main" tabindex="-1"></main>
@@ -21,6 +24,7 @@
   <script src="core.js"></script>
   <script src="config.js"></script>
   <script src="backend.js"></script>
+  <script src="pull-refresh.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

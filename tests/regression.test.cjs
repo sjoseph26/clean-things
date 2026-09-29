@@ -23,6 +23,7 @@ async function setup(options={}) {
   };
   w.CleanThingsBackend=backend;
   w.eval(fs.readFileSync(root+'core.js','utf8'));
+  w.eval(fs.readFileSync(root+'pull-refresh.js','utf8'));
   const code=fs.readFileSync(root+'app.js','utf8');
   assert.ok(code.endsWith('})();\n'));
   w.eval(code.replace('  bootstrapBackend();\n})();',`window.audit={get state(){return state},get ui(){return ui},get services(){return services},render,navigate,bootstrapBackend,openLocationPicker,handleAdminAction,submitPayment,openEditCustomer,openServiceEditor,showServiceDetails,submitCustomerCreate,currentAccount,loadAvailability,activateAccount,logout,submitAdminSettings,openEditProfile,openEditBooking,submitCustomerLogin,refreshAuthControls};window.auditReady=bootstrapBackend();})();`));
@@ -76,3 +77,14 @@ test('LOC-01 GPS success and denial retain manual fallback',async()=>{const t=aw
 test('AUTH-01 forged UI admin flag does not reveal management',async()=>{const t=await setup();try{t.w.sessionStorage.setItem('cleanthings.admin.auth','true');t.a.ui.screen='admin';t.a.render();assert.match(t.w.document.getElementById('app-main').textContent,/Administrator account required/);}finally{t.close()}});
 test('STATE-01 failed settings save leaves previous values',async()=>{const t=await setup();try{const form=t.w.document.createElement('form');form.innerHTML='<input name="businessName" value="Changed"><input name="mmgAccountName" value="Changed"><input name="mmgNumber" value="9999999">';t.backend.savePublicSettings=async()=>{throw Error('offline')};await t.a.submitAdminSettings({preventDefault(){},currentTarget:form});assert.equal(t.a.state.settings.businessName,'Test Business');}finally{t.close()}});
 test('STATE-02 failed service/profile edits preserve saved records',async()=>{const t=await setup();try{const service=t.a.services[0];t.a.openServiceEditor(service);t.w.document.querySelector('[name=name]').value='New Service';t.backend.saveService=async()=>{throw Error('offline')};t.w.document.getElementById('service-form').dispatchEvent(new t.w.Event('submit',{cancelable:true,bubbles:true}));await tick();assert.equal(service.name,'Essential Wash');t.a.openEditProfile();t.w.document.querySelector('[name=name]').value='New name';t.backend.updateProfile=async()=>{throw Error('offline')};t.w.document.getElementById('profile-form').dispatchEvent(new t.w.Event('submit',{cancelable:true,bubbles:true}));await tick();assert.equal(t.a.currentAccount().name,'Fixture');}finally{t.close()}});
+
+test('PTR-07 app protects booking, sign-in and settings forms while allowing live browsing refresh',async()=>{
+ const t=await setup({admin:true});try{
+  t.a.state.accounts=[{id:'user-1',name:'Fixture Admin',phone:'5926000000',role:'admin'}];
+  const swipe=()=>{const target=t.w.document.getElementById('app-main');for(const [type,y] of [['touchstart',0],['touchmove',160],['touchend',0]]){const event=new t.w.Event(type,{bubbles:true,cancelable:true});Object.defineProperty(event,'touches',{value:type==='touchend'?[]:[{clientX:100,clientY:y}]});target.dispatchEvent(event);}};
+  for(const screen of ['booking','account','admin']){
+    t.a.ui.screen=screen;t.a.ui.adminTab='settings';t.a.render();const before=t.calls.length;swipe();await tick();assert.equal(t.calls.length,before,screen+' must not refresh');
+  }
+  t.a.ui.screen='home';t.a.render();const before=t.calls.filter(x=>x==='services').length;swipe();await tick();assert.equal(t.calls.filter(x=>x==='services').length,before+1);assert.equal(t.w.document.querySelector('.refresh-button'),null);assert.equal(t.w.document.getElementById('accessible-refresh').hidden,false);
+ }finally{t.close()}
+});

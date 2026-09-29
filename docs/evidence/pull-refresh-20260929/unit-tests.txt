@@ -1,0 +1,32 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> clean-things@0.6.1 test
+> node --test tests/core.test.js tests/backend.test.js tests/auth-security.test.cjs tests/regression.test.cjs tests/database.test.cjs tests/theme-contrast.test.js tests/location.test.js tests/workflow.test.js tests/pull-refresh.test.cjs
+
+✔ AUTH-02 server 429 blocks retry locally, survives reload, then allows an explicit retry (4.459531ms)
+✔ AUTH-03 Retry-After accepts an HTTP date and safely defaults if absent or invalid (2.526167ms)
+✔ AUTH-04 invalid logins return the same message without leaking server detail (2.095723ms)
+✔ REC-02 reset requests use the configured HTTPS redirect and wait between successful requests (2.089444ms)
+✔ REC-03 missing recovery configuration sends no network request (0.963588ms)
+✔ REC-04 recovery throttling is separate from login and SMTP errors are sanitised (5.776649ms)
+Backend adapter tests passed.
+✔ tests/backend.test.js (100.166383ms)
+All Clean Things core tests passed.
+✔ tests/core.test.js (82.792982ms)
+▶ DB: customer isolation, availability, proof policy and recovery
+  ✔ SEC-01 anonymous booking denied (4.607679ms)
+  ✔ DATA-01 valid booking and retry return one record (23.411605ms)
+  ✔ SEC-02 other customer cannot read booking/profile (5.447134ms)
+  ✔ AVL-01 occupied slot visible without private details (2.488291ms)
+  ✔ AVL-02 conflicting account booking denied (2.197823ms)
+  ✔ SEC-03 customer cannot change other booking via RPC (2.030728ms)
+  ✔ SEC-04 customer cannot promote own role or edit prices/settings (4.004251ms)
+  ✔ VAL-01 missing/invalid schedule and phone rejected (8.324549ms)
+  ✔ AVL-03 whole-day blocking is atomic (11.570754ms)
+  ✔ PAY-01 image metadata accepted only in own booking folder (6.008099ms)
+  ✔ PAY-02 filename without stored proof is rejected (1.683026ms)
+  ✔ PAY-03 wrong path rejected and real path linked to exact booking (13.977975ms)
+  ✔ PAY-04 proof private to owner and administrator, immutable to customer (15.215371ms)
+  ✔ PAY-05 verified completed booking creates one linked receipt (10.18153ms)
+  ✔ SEC-05 customer cannot revert a verified payment (3.16095ms)
+  ✔ SEC-06 receipt private to owner and raw availability metadata hidden (5.490187ms)

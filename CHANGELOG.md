@@ -1,5 +1,13 @@
 # Change log
 
+## 0.6.1 - 29 September 2026
+
+- Replace the large refresh button with pull-to-refresh on live browsing screens.
+- Show a compact loading indicator, prevent concurrent refreshes and preserve unfinished forms.
+- Retain a keyboard/screen-reader refresh action and respect reduced-motion preferences.
+- Increment Android version code to 13, retaining the existing app identity and signing certificate.
+- Physical Android gesture testing remains outstanding.
+
 ## 0.6.0 security follow-up - 29 September 2026
 
 - Respect authentication rate-limit responses with a retry countdown that survives page reloads; keep login and recovery waits separate.

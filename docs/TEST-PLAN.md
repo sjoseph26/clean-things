@@ -1,4 +1,4 @@
-# Test plan and evidence index - v0.6.0
+# Test plan and evidence index - v0.6.1
 
 Run from the repository root with generated demo configuration and `npm ci`. All automated test data is fictional. Exact command, result and source hashes are recorded in [the evidence summary](evidence/README.md). A passing local result does not imply a deployed result.
 
@@ -47,3 +47,9 @@ Record tester, date, app/source version, device/OS/WebView, accounts, network, s
 | INT-01 | With authorised recipients, verify recovery/confirmation email and actual WhatsApp provider response; do not equate queued with delivered |
 
 Do not mark these rows Passed until executed. No test can establish that an application has no bugs; new reproducible findings should become issues with regression evidence.
+
+## v0.6.1 pull-to-refresh checks
+
+`tests/pull-refresh.test.cjs` covers trigger threshold, cancellation, horizontal/multi-touch gestures, top-of-page detection, nested scrolling, form controls, concurrent requests, failure recovery and accessible invocation. `PTR-07` in `tests/regression.test.cjs` checks protected application screens. The browser suite checks the indicator in both themes and verifies that releasing a pull refreshes the catalogue exactly once.
+
+On Android, verify a pull at the top of Home, Services and My bookings; scroll normally partway down; cancel a short pull; retry with connectivity lost/restored; and confirm unfinished booking/payment/settings forms remain unchanged. These physical-device checks have not yet been performed.

@@ -810,7 +810,7 @@
     else if (ui.screen === "account") main.innerHTML = renderAccount();
     else if (ui.screen === "admin") main.innerHTML = renderAdmin();
     else main.innerHTML = renderHome();
-    if (isLive() && !["booking", "payment", "success"].includes(ui.screen)) main.insertAdjacentHTML("afterbegin", '<button class="btn btn-secondary refresh-button" data-action="refresh-live">Refresh</button>');
+    document.getElementById("accessible-refresh").hidden = !canRefreshView();
     if (ui.screen === "booking" && ui.bookingStep === 2 && isLive()) {
       const status = ui.availabilityLoading ? "Loading availability…" : ui.availabilityError;
       if (status) fieldMessage("schedule-error", status);
@@ -819,10 +819,24 @@
     refreshAuthControls();
   }
 
+  function canRefreshView() {
+    return isLive() && !pendingActions.has("refresh") && !modalRoot.firstChild &&
+      (["home", "services", "bookings"].includes(ui.screen) || (ui.screen === "admin" && ui.adminTab !== "settings"));
+  }
+
+  const pullRefresh = window.CleanThingsPullRefresh({
+    surface: document.getElementById("app-shell"),
+    indicator: document.getElementById("pull-refresh-indicator"),
+    status: document.getElementById("refresh-status"),
+    enabled: canRefreshView,
+    refresh: refreshCurrentView
+  });
+  document.getElementById("accessible-refresh").addEventListener("click", pullRefresh.refresh);
+
   async function refreshCurrentView() {
     if (!isLive() || pendingActions.has("refresh")) return;
     pendingActions.add("refresh");
-    const epoch = authEpoch; const screen = ui.screen;
+    const epoch = authEpoch; const screen = ui.screen; const adminTab = ui.adminTab;
     try {
       const account = currentAccount();
       const data = await Promise.all([Backend.listServices(!!(account && account.role === "admin")), Backend.listPublicSettings(), account ? Backend.listBookings() : [], account ? Backend.listReceipts() : []]);
@@ -832,9 +846,10 @@
       state.bookings = data[2]; state.receipts = data[3];
       ui.backendStatus = "online";
       if (!account && Backend.session()) { const profile = await Backend.getMyProfile(); if (profile) await activateAccount(profile); }
-      if (epoch === authEpoch && ui.screen === screen && !modalRoot.firstChild) render();
-    } catch (error) { ui.backendStatus = "error"; showToast("Refresh failed: " + error.message); }
-    finally { pendingActions.delete("refresh"); }
+      if (epoch === authEpoch && ui.screen === screen && ui.adminTab === adminTab && !modalRoot.firstChild && !main.querySelector("form")) render();
+      return true;
+    } catch (error) { ui.backendStatus = "error"; showToast("Refresh failed: " + error.message); return false; }
+    finally { pendingActions.delete("refresh"); document.getElementById("accessible-refresh").hidden = !canRefreshView(); }
   }
 
   function bindRenderedForms() {
@@ -1470,8 +1485,7 @@
     const action = button.dataset.action;
     if (button.disabled) return;
     try {
-    if (action === "refresh-live") { await refreshCurrentView(); }
-    else if (action === "nav") navigate(button.dataset.screen);
+    if (action === "nav") navigate(button.dataset.screen);
     else if (action === "home") navigate("home");
     else if (action === "info") showAbout();
     else if (action === "start-booking") beginBooking("");
