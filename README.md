@@ -12,7 +12,7 @@ python3 scripts/configure.py --demo
 npm run serve
 ```
 
-Open `http://127.0.0.1:8080` on the same computer. The demo stores fictional records locally. Use `demo.customer@example.com` / `demo123` for a customer, or `demo.admin@example.com` / `DemoAdmin123` for management. These credentials do not work against Supabase. Reset older demo data from About if necessary. Connected mode uses real Supabase authentication and requires the setup below.
+Open `http://127.0.0.1:8080` on the same computer. The demo stores fictional records locally and provides separate **customer demo** and **administrator demo** buttons. Demo access uses no password, PIN or remote account and never connects to Supabase. Reset older demo data from About if necessary. Connected mode uses real Supabase authentication and requires the setup below.
 
 ## What changed
 

@@ -4,8 +4,6 @@
   const Core = window.CleanThingsCore;
   const Backend = window.CleanThingsBackend;
   const STORE_KEY = "cleanthings.prototype.v1";
-  const DEMO_PIN = "2468";
-  const DEMO_CUSTOMER_PASSWORD = "demo123";
   const DEFAULT_MMG_DETAILS = {
     accountName: "Clean Things (Demo)",
     number: "000-0000",
@@ -246,13 +244,12 @@
       ],
       receipts: [],
       accounts: [
-        { id: "ADMIN-DEMO-01", name: "Demo Administrator", phone: "5926000001", email: "demo.admin@example.com", password: "DemoAdmin123", role: "admin", createdAt: new Date().toISOString() },
+        { id: "ADMIN-DEMO-01", name: "Demo Administrator", phone: "592-600-0001", email: "", role: "admin", createdAt: new Date().toISOString() },
         {
           id: "CUS-DEMO-01",
           name: "Demo Customer",
           phone: "592-600-0000",
-          email: "demo.customer@example.com",
-          password: DEMO_CUSTOMER_PASSWORD,
+          email: "",
           role: "customer",
           vehicle: "Toyota Allion",
           plate: "DEMO-001",
@@ -269,8 +266,7 @@
       settings: {
         businessName: "Clean Things",
         mmgAccountName: DEFAULT_MMG_DETAILS.accountName,
-        mmgNumber: DEFAULT_MMG_DETAILS.number,
-        adminPin: DEMO_PIN
+        mmgNumber: DEFAULT_MMG_DETAILS.number
       },
       preferences: { theme: "light" }
     };
@@ -702,7 +698,7 @@
 
   function customerLoginForm() {
     if (isLive()) return '<form id="customer-login-form" class="card" novalidate><div class="info-callout"><strong>One sign-in:</strong> Customers see their bookings; authorised administrators receive management controls automatically.</div><div class="field"><label for="customer-email">Email</label><input id="customer-email" name="email" type="email" autocomplete="username" required></div><div class="field"><label for="customer-password">Password</label><input id="customer-password" name="password" type="password" autocomplete="current-password" required></div><span id="customer-login-error" class="field-error"></span><button class="btn btn-primary btn-block" type="submit">Sign in</button><button type="button" class="btn btn-ghost btn-block" data-action="forgot-password">Reset password</button></form>';
-    return '<form id="customer-login-form" class="card" novalidate><div class="info-callout"><strong>Demo login:</strong> 592-600-0000 / demo123</div><div class="field"><label for="customer-phone">Telephone</label><input id="customer-phone" name="phone" type="tel" value="592-600-0000"></div><div class="field"><label for="customer-password">Password</label><input id="customer-password" name="password" type="password" value="demo123"></div><span id="customer-login-error" class="field-error"></span><button class="btn btn-primary btn-block" type="submit">Sign in</button><button type="button" class="btn btn-ghost btn-block" data-action="forgot-password">Reset password</button></form>';
+    return '<div class="card"><div class="info-callout"><strong>Fictional local demo:</strong> Choose a role below. Demo access uses no password, PIN or remote account.</div><button class="btn btn-primary btn-block" data-action="demo-login" data-demo-role="customer">Continue as customer demo</button><button class="btn btn-secondary btn-block" data-action="demo-login" data-demo-role="admin">Continue as administrator demo</button></div>';
   }
 
   function customerCreateForm() {
@@ -777,8 +773,7 @@
   }
 
   function adminSettings() {
-    const pinField = isLive() ? '' : '<div class="field"><label for="admin-new-pin">Admin PIN</label><input id="admin-new-pin" name="adminPin" inputmode="numeric" maxlength="6" value="' + Core.safeText(state.settings.adminPin) + '"></div>';
-    return '<div class="admin-section-head"><div><h2>Business settings</h2><p>' + (isLive() ? "Live shared configuration" : "Local prototype configuration") + '</p></div></div><form id="admin-settings-form" class="card"><div class="field"><label for="business-name">Business name</label><input id="business-name" name="businessName" value="' + Core.safeText(state.settings.businessName) + '"></div><div class="field"><label for="mmg-name">MMG account name</label><input id="mmg-name" name="mmgAccountName" value="' + Core.safeText(state.settings.mmgAccountName) + '"></div><div class="field"><label for="mmg-number">MMG number</label><input id="mmg-number" name="mmgNumber" value="' + Core.safeText(state.settings.mmgNumber) + '"></div>' + pinField + '<button class="btn btn-admin btn-block" type="submit">Save settings</button></form><div class="card"><h3>Appearance & data</h3><button class="setting-row" data-action="toggle-theme"><span><strong>◐ Toggle dark mode</strong><small>Current: ' + Core.safeText(state.preferences.theme) + '</small></span><span>›</span></button>' + (isLive() ? '' : '<button class="setting-row danger-text" data-action="reset-demo"><span><strong>Reset prototype data</strong><small>Restore fictional default records</small></span><span>›</span></button>') + '</div>';
+    return '<div class="admin-section-head"><div><h2>Business settings</h2><p>' + (isLive() ? "Live shared configuration" : "Local prototype configuration") + '</p></div></div><form id="admin-settings-form" class="card"><div class="field"><label for="business-name">Business name</label><input id="business-name" name="businessName" value="' + Core.safeText(state.settings.businessName) + '"></div><div class="field"><label for="mmg-name">MMG account name</label><input id="mmg-name" name="mmgAccountName" value="' + Core.safeText(state.settings.mmgAccountName) + '"></div><div class="field"><label for="mmg-number">MMG number</label><input id="mmg-number" name="mmgNumber" value="' + Core.safeText(state.settings.mmgNumber) + '"></div><button class="btn btn-admin btn-block" type="submit">Save settings</button></form><div class="card"><h3>Appearance & data</h3><button class="setting-row" data-action="toggle-theme"><span><strong>◐ Toggle dark mode</strong><small>Current: ' + Core.safeText(state.preferences.theme) + '</small></span><span>›</span></button>' + (isLive() ? '' : '<button class="setting-row danger-text" data-action="reset-demo"><span><strong>Reset prototype data</strong><small>Restore fictional default records</small></span><span>›</span></button>') + '</div>';
   }
 
   function adminMore() {
@@ -1037,7 +1032,6 @@
       mmgNumber: String(data.get("mmgNumber") || "").trim()
     });
     if (!next.businessName || !next.mmgAccountName || !next.mmgNumber) { showToast("Complete all business settings."); return; }
-    if (!isLive()) { next.adminPin = String(data.get("adminPin") || "").trim(); if (!/^\d{4,6}$/.test(next.adminPin)) { showToast("Admin PIN must contain 4 to 6 digits."); return; } }
     try { if (isLive()) await Backend.savePublicSettings({ business_name: next.businessName, mmg_account_name: next.mmgAccountName, mmg_number: next.mmgNumber }); }
     catch (error) { showToast("Settings update failed: " + error.message); return; }
     state.settings = next; persistAndRender("Business settings saved.");
@@ -1557,6 +1551,12 @@
       }
     }
     else if (action === "account-mode") { ui.accountMode = button.dataset.mode; render(); }
+    else if (action === "demo-login" && !isLive()) {
+      const account = state.accounts.find(function (item) { return item.role === button.dataset.demoRole; });
+      if (!account) { showToast("The selected fictional demo role is unavailable."); return; }
+      sessionStorage.setItem("cleanthings.customer.id", account.id);
+      finishAccountEntry(account);
+    }
     else if (action === "customer-logout") await logout();
     else if (action === "edit-profile") openEditProfile();
     else if (action === "remove-avatar") {

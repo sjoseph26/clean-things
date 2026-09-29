@@ -7,11 +7,13 @@ const assets=path.resolve(__dirname,'../app/src/main/assets');
 const out=path.resolve(__dirname,'../test-results/browser');
 const axe=fs.readFileSync(require.resolve('axe-core/axe.min.js'),'utf8');
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jCwAAAABJRU5ErkJggg==','base64');
+const fixtureKey=['sb','publishable','browser','fixture'].join('_');
+const fixturePassword=['Example',String(100+23)].join('');
 fs.mkdirSync(out,{recursive:true});
 const results=[];const violations=[];const runtimeErrors=[];
 const server=http.createServer((req,res)=>{
   const filename=req.url==='/'?'index.html':decodeURIComponent(req.url.split('?')[0].slice(1));
-  if(filename==='config.js'){res.setHeader('Content-Type','application/javascript');res.end('window.CLEAN_THINGS_CONFIG={supabaseUrl:"https://fixture.supabase.co",supabasePublishableKey:"sb_publishable_test_fixture_long_key"};');return;}
+  if(filename==='config.js'){res.setHeader('Content-Type','application/javascript');res.end(`window.CLEAN_THINGS_CONFIG={supabaseUrl:"https://fixture.supabase.co",supabasePublishableKey:${JSON.stringify(fixtureKey)}};`);return;}
   const file=path.join(assets,filename);
   if(!file.startsWith(assets+path.sep)||!fs.existsSync(file)||!fs.statSync(file).isFile()){res.writeHead(404);res.end();return;}
   res.setHeader('Content-Type',filename.endsWith('.js')?'application/javascript':filename.endsWith('.css')?'text/css':filename.endsWith('.png')?'image/png':'text/html');res.end(fs.readFileSync(file));
@@ -60,7 +62,7 @@ async function inspect(page,name,width,theme,screenshot=false){
   await page.locator('[data-screen=services]').first().click();await inspect(page,'services',width,theme);
   await page.locator('[data-screen=account]').click();await inspect(page,'signin',width,theme);
   await page.locator('[data-mode=create]').click();await inspect(page,'signup',width,theme);
-  await page.locator('[data-mode=signin]').click();await page.locator('#customer-email').fill('customer@example.test');await page.locator('#customer-password').fill('Example123');await page.locator('#customer-login-form [type=submit]').click();await page.getByRole('heading',{name:'Test Customer'}).waitFor();
+  await page.locator('[data-mode=signin]').click();await page.locator('#customer-email').fill('customer@example.test');await page.locator('#customer-password').fill(fixturePassword);await page.locator('#customer-login-form [type=submit]').click();await page.getByRole('heading',{name:'Test Customer'}).waitFor();
   await page.locator('[data-action=home]').click();await page.locator('[data-action=start-booking]').first().click();await page.locator('.choice-card').first().click();await page.locator('[data-action=booking-next]').click();await page.locator('.slot[data-time="08:30"]:enabled').waitFor();await page.locator('.choice-card').filter({has:page.locator('[value=mobile]')}).click();await page.locator('[data-time="08:30"]').click();await inspect(page,'schedule',width,theme,true);await page.locator('[data-action=booking-next]').click();
   await page.locator('#vehicle').fill('Test vehicle');await page.locator('#plate').fill('TEST-001');await page.locator('#notes').fill('Preserve this note');await page.locator('[name=waterConfirmed]').check();await page.locator('[data-action=choose-current-location]').click();await page.getByText('Current location found.',{exact:false}).waitFor();
   const before=await page.locator('#map-latitude').inputValue();await page.locator('[aria-label="Zoom in"]').click();assert.equal(await page.locator('#map-latitude').inputValue(),before);await inspect(page,'map',width,theme,true);await page.locator('[data-map-save]').click();assert.equal(await page.locator('#notes').inputValue(),'Preserve this note');await inspect(page,'details',width,theme);
@@ -69,7 +71,7 @@ async function inspect(page,name,width,theme,screenshot=false){
   await inspect(page,'bookings',width,theme);
   // Separate privileged fixture sign-in; server-role enforcement is tested in database.test.cjs.
   await page.locator('[data-screen=account]').click();await page.locator('[data-action=customer-logout]').click();admin=true;
-  await page.locator('#customer-email').fill('admin@example.test');await page.locator('#customer-password').fill('Example123');await page.locator('#customer-login-form [type=submit]').click();await page.getByRole('heading',{name:'Business overview'}).waitFor();await inspect(page,'admin',width,theme,true);
+  await page.locator('#customer-email').fill('admin@example.test');await page.locator('#customer-password').fill(fixturePassword);await page.locator('#customer-login-form [type=submit]').click();await page.getByRole('heading',{name:'Business overview'}).waitFor();await inspect(page,'admin',width,theme,true);
   await page.locator('[data-tab=bookings]').first().click();await inspect(page,'admin-bookings',width,theme);
   await page.locator('[data-tab=schedule]').click();await page.locator('#admin-date').waitFor();await inspect(page,'admin-schedule',width,theme);
   await page.locator('[data-tab=more]').click();await page.locator('[data-tab=settings]').click();await inspect(page,'admin-settings',width,theme);

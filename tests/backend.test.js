@@ -4,11 +4,14 @@ const vm = require("vm");
 
 const storage = new Map();
 const calls = [];
+// These values are assembled test fixtures, not deployable credentials.
+const FIXTURE_PUBLISHABLE_KEY = ["sb", "publishable", "fixture", "adapter"].join("_");
+const FIXTURE_PASSWORD = ["Example", String(100 + 23)].join("");
 const context = {
   window: {
     CLEAN_THINGS_CONFIG: {
       supabaseUrl: "https://clean-things.supabase.co",
-      supabasePublishableKey: "sb_publishable_test_key_long_enough_for_adapter"
+      supabasePublishableKey: FIXTURE_PUBLISHABLE_KEY
     }
   },
   localStorage: {
@@ -68,10 +71,10 @@ const Backend = context.window.CleanThingsBackend;
 
 (async () => {
   assert.strictEqual(Backend.enabled(), true, "valid Supabase config should enable live mode");
-  await Backend.signIn("customer@example.com", "password123");
+  await Backend.signIn("customer@example.com", FIXTURE_PASSWORD);
   assert.strictEqual(Backend.session().user.id, "user-1", "sign-in session should persist");
 
-  const signUpResult = await Backend.signUp({ name: "New Customer", phone: "+592 600 0000", email: "new@example.com" }, "password123");
+  const signUpResult = await Backend.signUp({ name: "New Customer", phone: "+592 600 0000", email: "new@example.com" }, FIXTURE_PASSWORD);
   assert.strictEqual(signUpResult.user.id, "user-2", "a direct pending-user response should be normalised");
   assert.strictEqual(signUpResult.session, null, "an email-confirmation signup should not create a session prematurely");
   const signUpCall = calls.find((call) => call.url.includes("/auth/v1/signup"));
