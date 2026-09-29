@@ -61,7 +61,7 @@ public class MainActivity extends Activity {
                 String path = uri.getPath();
                 String file = path != null && path.startsWith("/assets/") ? path.substring(8) : "";
                 String mime = file.endsWith(".html") ? "text/html" : file.endsWith(".js") ? "application/javascript" : file.endsWith(".css") ? "text/css" : "image/png";
-                if (isAppOrigin(uri) && "GET".equals(request.getMethod()) && file.matches("(index\\.html|app\\.js|backend\\.js|core\\.js|config\\.js|styles\\.css|logo\\.png)")) {
+                if (isAppOrigin(uri) && "GET".equals(request.getMethod()) && file.matches("(index\\.html|app\\.js|backend\\.js|core\\.js|config\\.js|pull-refresh\\.js|styles\\.css|logo\\.png)")) {
                     try { return new WebResourceResponse(mime, "UTF-8", getAssets().open(file)); }
                     catch (IOException ignored) { /* return a local 404 below */ }
                 }
@@ -192,6 +192,17 @@ public class MainActivity extends Activity {
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
+        if (webView != null) {
+            webView.evaluateJavascript("Boolean(window.CleanThingsHandleBack && window.CleanThingsHandleBack())", result -> {
+                if (!isFinishing() && !isDestroyed() && !"true".equals(result)) navigateBack();
+            });
+        } else {
+            navigateBack();
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private void navigateBack() {
         if (webView != null && webView.canGoBack()) {
             webView.goBack();
         } else {

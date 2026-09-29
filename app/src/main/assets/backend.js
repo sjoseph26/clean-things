@@ -4,6 +4,7 @@
   const config = root.CLEAN_THINGS_CONFIG || {};
   const SESSION_KEY = "cleanthings.supabase.session.v1";
   let refreshPromise = null;
+  let refreshGeneration = -1;
   let sessionGeneration = 0;
   const AUTH_RETRY_KEY = "cleanthings.auth.retry.v1";
   let authRetryUntil = {};
@@ -91,19 +92,21 @@
   function saveSession(value) {
     if (value) localStorage.setItem(SESSION_KEY, JSON.stringify(value));
     else {
+      sessionGeneration += 1;
       localStorage.removeItem(SESSION_KEY);
       if (root.dispatchEvent && root.Event) root.dispatchEvent(new root.Event("cleanthings:session-ended"));
     }
   }
 
-  async function refreshSessionIfNeeded() {
+  async function refreshSessionIfNeeded(force) {
     const active = session();
     if (!active || !active.refresh_token) return active;
     const expiresAt = Number(active.expires_at || 0);
-    if (expiresAt && expiresAt > Math.floor(Date.now() / 1000) + 60) return active;
-    if (refreshPromise) return refreshPromise;
+    if (!force && expiresAt && expiresAt > Math.floor(Date.now() / 1000) + 60) return active;
+    if (refreshPromise && refreshGeneration === sessionGeneration) return refreshPromise;
     const generation = sessionGeneration;
-    refreshPromise = fetchPayload(config.supabaseUrl.replace(/\/$/, "") + "/auth/v1/token?grant_type=refresh_token", {
+    refreshGeneration = generation;
+    const pending = fetchPayload(config.supabaseUrl.replace(/\/$/, "") + "/auth/v1/token?grant_type=refresh_token", {
       method: "POST",
       headers: { apikey: config.supabasePublishableKey, "Content-Type": "application/json" },
       body: JSON.stringify({ refresh_token: active.refresh_token })
@@ -112,16 +115,20 @@
       saveSession(payload);
       return payload;
     }).catch(function (error) {
-      if (generation === sessionGeneration && (error.status === 400 || error.status === 401 || error.status === 403)) saveSession(null);
+      const ended = ["refresh_token_not_found", "refresh_token_already_used", "session_not_found", "session_expired", "user_banned", "user_not_found"].includes(error.code);
+      if (generation === sessionGeneration && ended) saveSession(null);
       throw error;
-    }).finally(function () { refreshPromise = null; });
-    return refreshPromise;
+    }).finally(function () { if (refreshPromise === pending) refreshPromise = null; });
+    refreshPromise = pending;
+    return pending;
   }
 
   async function request(path, options) {
     options = options || {};
     if (!enabled()) throw new Error("The live database has not been configured yet.");
+    const generation = sessionGeneration;
     const activeSession = options.skipRefresh ? session() : await refreshSessionIfNeeded();
+    if (!options.skipRefresh && generation !== sessionGeneration) throw new Error("Your session changed. Please try again.");
     const headers = Object.assign({
       apikey: config.supabasePublishableKey,
       Authorization: "Bearer " + (activeSession && activeSession.access_token ? activeSession.access_token : config.supabasePublishableKey)
@@ -131,7 +138,16 @@
     delete fetchOptions.skipRefresh;
     try { return await fetchPayload(config.supabaseUrl.replace(/\/$/, "") + path, fetchOptions); }
     catch (error) {
-      if (!options.skipRefresh && error.status === 401 && activeSession) saveSession(null);
+      // A rejected resource request is not proof that the login was revoked.
+      // Refresh once, never replay an old account's request under a new login.
+      if (!options.skipRefresh && error.status === 401 && activeSession && activeSession.refresh_token && generation === sessionGeneration) {
+        const current = session();
+        if (!current) throw error;
+        const renewed = current.access_token !== activeSession.access_token ? current : await refreshSessionIfNeeded(true);
+        if (generation !== sessionGeneration || !renewed) throw error;
+        fetchOptions.headers.Authorization = "Bearer " + renewed.access_token;
+        return fetchPayload(config.supabaseUrl.replace(/\/$/, "") + path, fetchOptions);
+      }
       throw error;
     }
   }
@@ -168,7 +184,7 @@
     const active = session();
     sessionGeneration += 1;
     saveSession(null);
-    if (active) await request("/auth/v1/logout", { method: "POST", skipRefresh: true, headers: { Authorization: "Bearer " + active.access_token } });
+    if (active) await request("/auth/v1/logout?scope=local", { method: "POST", skipRefresh: true, headers: { Authorization: "Bearer " + active.access_token } });
   }
 
   async function getMyProfile() {

@@ -1,4 +1,4 @@
-# Technical design - v0.6.1
+# Technical design - v0.6.2
 
 ## Components and boundaries
 
@@ -46,3 +46,9 @@ Reference: [Android WebView guidance](https://developer.android.com/develop/ui/v
 ## Refresh interaction (v0.6.1)
 
 `pull-refresh.js` owns the touch gesture and a single-request loading state; `app.js` determines eligible screens and reuses the existing backend refresh path. Refresh does not reload the WebView. The indicator is outside the rerendered content. The keyboard action appears on focus; live-region messages announce progress and outcome. Reduced-motion settings disable spinner animation.
+
+## Admin feedback repair (v0.6.2)
+
+The authenticated profile remains separate from directory completeness. Refresh operations preserve that profile while merging other customer records. Auth refresh is serialized per login generation, and rejected resource requests receive at most one retry with a renewed token. Definitive refresh-token/session error codes clear identity; network and generic permission failures do not. Ordinary logout explicitly uses local scope. See [Supabase sign-out scopes](https://supabase.com/docs/guides/auth/signout) and [Auth error codes](https://supabase.com/docs/guides/auth/debugging/error-codes).
+
+Add-on fieldsets preserve database JSON structure and IDs, independent of names or description punctuation. Month filtering applies to appointment dates, with Guyana-local creation dates for walk-ins. The native Back handler first evaluates the page's synchronous dialog-dismissal hook; browser history handling has the same visible behaviour. Every HTML asset must pass the native asset allowlist test.

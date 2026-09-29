@@ -1,4 +1,4 @@
-# Test plan and evidence index - v0.6.1
+# Test plan and evidence index - v0.6.2
 
 Run from the repository root with generated demo configuration and `npm ci`. All automated test data is fictional. Exact command, result and source hashes are recorded in [the evidence summary](evidence/README.md). A passing local result does not imply a deployed result.
 
@@ -53,3 +53,9 @@ Do not mark these rows Passed until executed. No test can establish that an appl
 `tests/pull-refresh.test.cjs` covers trigger threshold, cancellation, horizontal/multi-touch gestures, top-of-page detection, nested scrolling, form controls, concurrent requests, failure recovery and accessible invocation. `PTR-07` in `tests/regression.test.cjs` checks protected application screens. The browser suite checks the indicator in both themes and verifies that releasing a pull refreshes the catalogue exactly once.
 
 On Android, verify a pull at the top of Home, Services and My bookings; scroll normally partway down; cancel a short pull; retry with connectivity lost/restored; and confirm unfinished booking/payment/settings forms remain unchanged. These physical-device checks have not yet been performed.
+
+## v0.6.2 admin and navigation checks
+
+Automated coverage: `ADMIN-01..04`, `BACK-01`, `SESSION-01..06` and `NATIVE-01` verify admin identity, structured add-ons, combined month filters, popup dismissal, token refresh races/revocation and Android asset loading. The browser suite additionally creates/edits/deletes a mocked booking, tests browser Back, and inspects the new add-on and filter layouts in both themes at three mobile widths.
+
+Phone acceptance: install v0.6.2 over the existing app; sign in as admin, background/resume and revisit management; create an add-on with distinct name/description/price, then reopen it; filter bookings by month, status and search; press/gesture Back on a booking or service dialog and confirm only the dialog closes. After the separately applied availability hotfix, use an agreed test booking to verify date selection, creation, adjustment and deletion against the live backend. Do not delete genuine customer records as test data.

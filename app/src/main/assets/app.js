@@ -84,6 +84,7 @@
     adminDate: dateFromNow(1),
     adminSearch: "",
     adminStatus: "All",
+    adminMonth: "",
     accountMode: "signin",
     authNotice: "",
     pendingBookingServiceId: null,
@@ -374,11 +375,17 @@
     ui.backendStatus = "online";
     if (account.role === "admin") {
       sessionStorage.setItem("cleanthings.admin.auth", "true");
-      const profiles = await Backend.listProfiles();
+      let profiles;
+      try { profiles = await Backend.listProfiles(); }
+      catch (error) {
+        if (epoch !== authEpoch || !Backend.session()) throw error;
+        profiles = [];
+        showToast("Signed in. The customer list could not be loaded; pull down to retry.");
+      }
       if (epoch !== authEpoch) throw new Error("Your session ended.");
       const hydrated = await Promise.all(profiles.map(function (item) { return hydrateAvatar(profileToAccount(item)); }));
       if (epoch !== authEpoch) throw new Error("Your session ended.");
-      state.accounts = hydrated;
+      state.accounts = [account].concat(hydrated.filter(function (item) { return item.id !== account.id; }));
     } else {
       sessionStorage.removeItem("cleanthings.admin.auth");
     }
@@ -751,9 +758,15 @@
     const records = state.bookings.slice().reverse().filter(function (booking) {
       const matchesText = !query || [booking.reference, booking.name, booking.phone, booking.vehicle, booking.plate].join(" ").toLowerCase().indexOf(query) >= 0;
       const matchesStatus = ui.adminStatus === "All" || booking.status === ui.adminStatus;
-      return matchesText && matchesStatus;
+      let recordMonth = String(booking.date || "").slice(0, 7);
+      if (!recordMonth && booking.walkIn && booking.createdAt && !isNaN(Date.parse(booking.createdAt))) {
+        const parts = new Intl.DateTimeFormat("en", { timeZone: "America/Guyana", year: "numeric", month: "2-digit" }).formatToParts(new Date(booking.createdAt));
+        recordMonth = parts.find(function (part) { return part.type === "year"; }).value + "-" + parts.find(function (part) { return part.type === "month"; }).value;
+      }
+      const matchesMonth = !ui.adminMonth || recordMonth === ui.adminMonth;
+      return matchesText && matchesStatus && matchesMonth;
     });
-    return '<div class="admin-section-head"><div><h2>Bookings</h2><p>' + records.length + ' record(s) shown</p></div><button class="btn btn-admin btn-small" data-action="open-walkin">+ Walk-in</button></div><div class="admin-filter"><input id="admin-booking-search" type="search" placeholder="Search customer, vehicle or reference" value="' + Core.safeText(ui.adminSearch) + '"><select id="admin-status-filter"><option>All</option>' + ["Pending confirmation", "Confirmed", "Completed", "Cancelled"].map(function (status) { return '<option ' + (ui.adminStatus === status ? "selected" : "") + '>' + status + '</option>'; }).join("") + '</select></div>' + (records.length ? records.map(adminBookingCard).join("") : '<div class="empty"><div class="empty-icon">⌕</div><h3>No matching bookings</h3><p>Try another search or status filter.</p></div>');
+    return '<div class="admin-section-head"><div><h2>Bookings</h2><p>' + records.length + ' record(s) shown</p></div><button class="btn btn-admin btn-small" data-action="open-walkin">+ Walk-in</button></div><div class="admin-filter"><input id="admin-booking-search" aria-label="Search bookings" type="search" placeholder="Search customer, vehicle or reference" value="' + Core.safeText(ui.adminSearch) + '"><select id="admin-status-filter" aria-label="Booking status"><option>All</option>' + ["Pending confirmation", "Confirmed", "Completed", "Cancelled"].map(function (status) { return '<option ' + (ui.adminStatus === status ? "selected" : "") + '>' + status + '</option>'; }).join("") + '</select></div><div class="booking-month-filter"><div class="field"><label for="admin-booking-month">Booking month</label><input id="admin-booking-month" type="month" value="' + Core.safeText(ui.adminMonth) + '"><span class="field-hint">Appointment date, or recorded date for walk-ins.</span></div><button id="clear-booking-month" class="btn btn-ghost btn-small" type="button" ' + (!ui.adminMonth ? 'disabled' : '') + '>All months</button></div>' + (records.length ? records.map(adminBookingCard).join("") : '<div class="empty"><div class="empty-icon">⌕</div><h3>No matching bookings</h3><p>Try another search, status or month filter.</p></div>');
   }
 
   function adminBookingCard(booking) {
@@ -839,8 +852,10 @@
     const epoch = authEpoch; const screen = ui.screen; const adminTab = ui.adminTab;
     try {
       const account = currentAccount();
-      const data = await Promise.all([Backend.listServices(!!(account && account.role === "admin")), Backend.listPublicSettings(), account ? Backend.listBookings() : [], account ? Backend.listReceipts() : []]);
+      const data = await Promise.all([Backend.listServices(!!(account && account.role === "admin")), Backend.listPublicSettings(), account ? Backend.listBookings() : [], account ? Backend.listReceipts() : [], account && account.role === "admin" ? Backend.listProfiles() : []]);
+      const directory = await Promise.all(data[4].map(function (row) { return hydrateAvatar(profileToAccount(row)); }));
       if (epoch !== authEpoch) return;
+      if (account && account.role === "admin") state.accounts = [account].concat(directory.filter(function (item) { return item.id !== account.id; }));
       services = data[0].map(serviceFromRow); state.services = services;
       data[1].forEach(function (item) { const keys = {business_name:"businessName",mmg_account_name:"mmgAccountName",mmg_number:"mmgNumber"}; if (keys[item.key]) state.settings[keys[item.key]] = item.value; });
       state.bookings = data[2]; state.receipts = data[3];
@@ -867,8 +882,17 @@
     if (bookingSearch) bookingSearch.addEventListener("input", function (event) { ui.adminSearch = event.target.value; render(); const next = document.getElementById("admin-booking-search"); if (next) { next.focus(); next.setSelectionRange(next.value.length, next.value.length); } });
     const statusFilter = document.getElementById("admin-status-filter");
     if (statusFilter) statusFilter.addEventListener("change", function (event) { ui.adminStatus = event.target.value; render(); });
+    const monthFilter = document.getElementById("admin-booking-month");
+    if (monthFilter) monthFilter.addEventListener("change", function (event) { ui.adminMonth = event.target.value; render(); });
+    const clearMonth = document.getElementById("clear-booking-month");
+    if (clearMonth) clearMonth.addEventListener("click", function () { ui.adminMonth = ""; render(); });
     const adminDate = document.getElementById("admin-date");
-    if (adminDate) adminDate.addEventListener("change", async function (event) { ui.adminDate = event.target.value; if (isLive()) await loadAvailability(ui.adminDate); render(); });
+    if (adminDate) adminDate.addEventListener("change", async function (event) {
+      ui.adminDate = event.target.value;
+      try { if (isLive()) await loadAvailability(ui.adminDate); }
+      catch (error) { showToast("Schedule could not be loaded: " + error.message); }
+      if (ui.screen === "admin" && ui.adminTab === "schedule") render();
+    });
   }
 
   async function loadAvailability(date) {
@@ -1150,6 +1174,13 @@
     if (modalReturnFocus && modalReturnFocus.isConnected) modalReturnFocus.focus();
   }
 
+  // Android asks the page to dismiss its top layer before navigating history.
+  window.CleanThingsHandleBack = function () {
+    if (!modalRoot.firstChild) return false;
+    closeModal();
+    return true;
+  };
+
   function showServiceDetails(id) {
     const service = serviceById(id);
     if (!service) return;
@@ -1233,9 +1264,53 @@
     const isNew = !service;
     const item = service ? JSON.parse(JSON.stringify(service)) : { id: "service-" + String(Date.now()).slice(-7), icon: "🫧", name: "", price: 0, duration: "45 min", description: "", includes: ["Professional vehicle care"], addOns: [], enabled: true };
     const includesText = (item.includes || []).join("\n");
-    const addOnsText = (item.addOns || []).map(function (addOn) { return addOn.name + " | " + Number(addOn.price || 0) + " | " + (addOn.description || ""); }).join("\n");
-    openModal(isNew ? "Add service" : "Edit service", '<form id="service-form"><div class="form-grid"><div class="field"><label>Icon</label><input name="icon" value="' + Core.safeText(item.icon) + '"></div><div class="field"><label>Duration</label><input name="duration" value="' + Core.safeText(item.duration) + '"></div></div><div class="field"><label>Service name</label><input name="name" value="' + Core.safeText(item.name) + '"></div><div class="form-grid"><div class="field"><label>Price (GYD)</label><input name="price" type="number" min="0" value="' + Number(item.price || 0) + '"></div><div class="field"><label>Display order</label><input name="displayOrder" type="number" min="0" value="' + Number(item.displayOrder || services.length + 1) + '"></div></div><div class="field"><label>Description</label><textarea name="description">' + Core.safeText(item.description || "") + '</textarea></div><div class="field"><label>What is included</label><textarea name="includes" rows="4">' + Core.safeText(includesText) + '</textarea><span class="field-hint">Enter one included item per line.</span></div><div class="field"><label>Add-ons</label><textarea name="addOns" rows="5">' + Core.safeText(addOnsText) + '</textarea><span class="field-hint">One per line: Name | Price | Description</span></div><label class="check-row"><input name="popular" type="checkbox" ' + (item.popular ? "checked" : "") + '><span><strong>Mark as popular</strong><small>Highlights this service for customers</small></span></label><span id="service-form-error" class="field-error"></span><button class="btn btn-admin btn-block" type="submit">' + (isNew ? "Add service" : "Save service") + '</button></form>');
-    document.getElementById("service-form").addEventListener("submit", async function (event) { event.preventDefault(); const data = new FormData(event.currentTarget); const name = String(data.get("name") || "").trim(); const includes = Core.serviceIncludesFromText(data.get("includes")); if (!name || !includes.length) { document.getElementById("service-form-error").textContent = !name ? "Enter a service name." : "Enter at least one included item."; return; } item.icon = String(data.get("icon") || "🫧"); item.duration = String(data.get("duration") || "").trim(); item.name = name; item.price = Math.max(0, Number(data.get("price") || 0)); item.description = String(data.get("description") || "").trim(); item.includes = includes; try { item.addOns = Core.serviceAddOnsFromText(data.get("addOns"), service ? service.addOns : []); } catch (error) { fieldMessage("service-form-error", error.message); return; } item.popular = data.get("popular") === "on"; item.displayOrder = Number(data.get("displayOrder") || 0); if (isLive()) { try { await Backend.saveService(serviceToRow(item)); } catch (error) { document.getElementById("service-form-error").textContent = error.message; return; } } if (isNew) services.push(item); else Object.assign(service, item); services.sort(function (a, b) { return Number(a.displayOrder || 0) - Number(b.displayOrder || 0); }); saveState(); closeModal(); render(); showToast(isNew ? "Service added." : "Service updated."); });
+    openModal(isNew ? "Add service" : "Edit service", '<form id="service-form"><div class="form-grid"><div class="field"><label>Icon</label><input name="icon" value="' + Core.safeText(item.icon) + '"></div><div class="field"><label>Duration</label><input name="duration" value="' + Core.safeText(item.duration) + '"></div></div><div class="field"><label>Service name</label><input name="name" value="' + Core.safeText(item.name) + '"></div><div class="form-grid"><div class="field"><label>Price (GYD)</label><input name="price" type="number" min="0" value="' + Number(item.price || 0) + '"></div><div class="field"><label>Display order</label><input name="displayOrder" type="number" min="0" value="' + Number(item.displayOrder || services.length + 1) + '"></div></div><div class="field"><label>Description</label><textarea name="description">' + Core.safeText(item.description || "") + '</textarea></div><div class="field"><label>What is included</label><textarea name="includes" rows="4">' + Core.safeText(includesText) + '</textarea><span class="field-hint">Enter one included item per line.</span></div><section class="service-addons"><h3>Optional add-ons</h3><div id="service-addon-rows"></div><button type="button" class="btn btn-secondary btn-small" id="add-service-addon">+ Add add-on</button></section><label class="check-row"><input name="popular" type="checkbox" ' + (item.popular ? "checked" : "") + '><span><strong>Mark as popular</strong><small>Highlights this service for customers</small></span></label><span id="service-form-error" class="field-error"></span><button class="btn btn-admin btn-block" type="submit">' + (isNew ? "Add service" : "Save service") + '</button></form>');
+    const form = document.getElementById("service-form");
+    const rows = document.getElementById("service-addon-rows");
+    let rowNumber = 0;
+    function addRow(addon) {
+      const number = ++rowNumber;
+      const row = document.createElement("fieldset");
+      row.className = "service-addon-row";
+      row.dataset.addonId = addon.id || "addon-" + crypto.randomUUID();
+      const prefix = "addon-" + number;
+      row.innerHTML = '<legend>Add-on ' + number + '</legend><div class="field"><label for="' + prefix + '-name">Name</label><input id="' + prefix + '-name" data-addon-name required value="' + Core.safeText(addon.name || "") + '"></div><div class="field"><label for="' + prefix + '-description">Description</label><textarea id="' + prefix + '-description" data-addon-description>' + Core.safeText(addon.description || "") + '</textarea></div><div class="field"><label for="' + prefix + '-price">Price (GYD)</label><input id="' + prefix + '-price" data-addon-price type="number" min="0" step="0.01" required value="' + Core.safeText(addon.price == null ? "" : String(addon.price)) + '"></div><button type="button" class="btn btn-danger btn-small" data-remove-addon aria-label="Remove add-on ' + number + '">Remove add-on</button>';
+      row.querySelector("[data-remove-addon]").addEventListener("click", function () { row.remove(); document.getElementById("add-service-addon").focus(); });
+      rows.appendChild(row);
+      return row;
+    }
+    (item.addOns || []).forEach(addRow);
+    document.getElementById("add-service-addon").addEventListener("click", function () { addRow({}).querySelector("input").focus(); });
+    let saving = false;
+    form.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      if (saving) return;
+      const data = new FormData(form);
+      const name = String(data.get("name") || "").trim();
+      const includes = Core.serviceIncludesFromText(data.get("includes"));
+      const errorNode = form.querySelector("#service-form-error");
+      if (!name || !includes.length) { errorNode.textContent = !name ? "Enter a service name." : "Enter at least one included item."; return; }
+      const addOns = Array.from(rows.children).map(function (row) {
+        return { id: row.dataset.addonId, name: row.querySelector("[data-addon-name]").value.trim(), description: row.querySelector("[data-addon-description]").value.trim(), price: row.querySelector("[data-addon-price]").value };
+      });
+      if (addOns.some(function (addon) { return !addon.name || addon.price === "" || !Number.isFinite(Number(addon.price)) || Number(addon.price) < 0; })) {
+        errorNode.textContent = "Each add-on needs a name and a valid price of zero or more."; return;
+      }
+      addOns.forEach(function (addon) { addon.price = Number(addon.price); });
+      const price = Number(data.get("price"));
+      if (!Number.isFinite(price) || price < 0) { errorNode.textContent = "Enter a valid service price."; return; }
+      Object.assign(item, { icon: String(data.get("icon") || "🫧"), duration: String(data.get("duration") || "").trim(), name: name, price: price,
+        description: String(data.get("description") || "").trim(), includes: includes, addOns: addOns, popular: data.get("popular") === "on", displayOrder: Number(data.get("displayOrder") || 0) });
+      saving = true;
+      const submit = form.querySelector('[type="submit"]'); submit.disabled = true;
+      try { if (isLive()) await Backend.saveService(serviceToRow(item)); }
+      catch (error) { errorNode.textContent = error.message; saving = false; submit.disabled = false; return; }
+      if (isNew) services.push(item); else Object.assign(service, item);
+      services.sort(function (a, b) { return Number(a.displayOrder || 0) - Number(b.displayOrder || 0); });
+      saveState();
+      if (form.isConnected) { closeModal(); render(); }
+      showToast(isNew ? "Service added." : "Service updated.");
+    });
   }
 
   function coordinatesFromText(value) {
@@ -1637,6 +1712,10 @@
   });
 
   window.addEventListener("popstate", function (event) {
+    if (window.CleanThingsHandleBack()) {
+      history.pushState({ screen: ui.screen }, "", "#" + ui.screen);
+      return;
+    }
     ui.screen = event.state && event.state.screen ? event.state.screen : "home";
     render();
   });

@@ -1,13 +1,13 @@
 {
   "name": "clean-things",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "private": true,
   "description": "Clean Things Android booking prototype and verification suite",
   "engines": {
     "node": ">=22.12"
   },
   "scripts": {
-    "test": "node --test tests/core.test.js tests/backend.test.js tests/auth-security.test.cjs tests/regression.test.cjs tests/database.test.cjs tests/theme-contrast.test.js tests/location.test.js tests/workflow.test.js tests/pull-refresh.test.cjs tests/availability-hotfix.test.cjs",
+    "test": "node --test tests/core.test.js tests/backend.test.js tests/auth-security.test.cjs tests/regression.test.cjs tests/database.test.cjs tests/theme-contrast.test.js tests/location.test.js tests/workflow.test.js tests/pull-refresh.test.cjs tests/availability-hotfix.test.cjs tests/session.test.cjs",
     "test:browser": "node tests/browser.test.cjs",
     "check": "python3 scripts/check_source_package.py",
     "serve": "python3 -m http.server 8080 --bind 127.0.0.1 --directory app/src/main/assets"

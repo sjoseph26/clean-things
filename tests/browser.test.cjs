@@ -49,7 +49,11 @@ async function inspect(page,name,width,theme,screenshot=false){
     else if(p==='/rest/v1/services'){serviceLoads++;body=[{id:'essential',name:'Essential Wash',icon:'🚙',price:3000,duration:'40 min',description:'Exterior wash and dry',includes:['Wash','Dry'],add_ons:[{id:'tyre-shine',name:'Tyre shine',description:'Finishing care',price:800}],enabled:true}];}
     else if(p==='/rest/v1/app_settings')body=[{key:'business_name',value:'Test Clean Things'},{key:'mmg_account_name',value:'Demo Merchant'},{key:'mmg_number',value:'000-0000'}];
     else if(p==='/rest/v1/rpc/appointment_availability')body=[{service_time:'10:00',status:'booked'}];
-    else if(p==='/rest/v1/bookings')body=records;
+    else if(p==='/rest/v1/bookings'){
+      if(route.request().method()==='PATCH')Object.assign(records[0],route.request().postDataJSON());
+      if(route.request().method()==='DELETE')records=[];
+      body=records;
+    }
     else if(p==='/rest/v1/rpc/create_booking'){
       const d=route.request().postDataJSON().input;
       body={id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',reference:'CT-FIXTURE',user_id:'11111111-1111-4111-8111-111111111111',service_id:d.serviceId,service_name:'Essential Wash',add_ons:d.addOns,service_mode:d.serviceMode,service_date:d.date,service_time:d.time,customer_name:d.name,customer_phone:d.phone,vehicle:d.vehicle,plate:d.plate,location:d.location,location_pin:d.locationPin,total:3000,status:'Pending confirmation',payment_status:'Not submitted'};records=[body];
@@ -77,6 +81,8 @@ async function inspect(page,name,width,theme,screenshot=false){
   }
 
   await page.locator('[data-screen=services]').first().click();await inspect(page,'services',width,theme);
+  await page.locator('[data-action=service-details]').first().click();await page.goBack();
+  assert.equal(await page.locator('[role=dialog]').count(),0);assert.ok(page.url().endsWith('#services'));
   await page.locator('[data-screen=account]').click();await inspect(page,'signin',width,theme);
   await page.locator('[data-mode=create]').click();await inspect(page,'signup',width,theme);
   await page.locator('[data-mode=signin]').click();await page.locator('#customer-email').fill('customer@example.test');await page.locator('#customer-password').fill(fixturePassword);await page.locator('#customer-login-form [type=submit]').click();await page.getByRole('heading',{name:'Test Customer'}).waitFor();
@@ -89,7 +95,17 @@ async function inspect(page,name,width,theme,screenshot=false){
   // Separate privileged fixture sign-in; server-role enforcement is tested in database.test.cjs.
   await page.locator('[data-screen=account]').click();await page.locator('[data-action=customer-logout]').click();admin=true;
   await page.locator('#customer-email').fill('admin@example.test');await page.locator('#customer-password').fill(fixturePassword);await page.locator('#customer-login-form [type=submit]').click();await page.getByRole('heading',{name:'Business overview'}).waitFor();await inspect(page,'admin',width,theme,true);
-  await page.locator('[data-tab=bookings]').first().click();await inspect(page,'admin-bookings',width,theme);
+  await page.locator('[data-tab=bookings]').first().click();await inspect(page,'admin-bookings',width,theme,true);
+  await page.locator('#admin-booking-month').fill('2099-01');assert.equal(await page.locator('.admin-record').count(),0);
+  await page.locator('#clear-booking-month').click();assert.equal(await page.locator('.admin-record').count(),1);
+  await page.locator('[data-action=edit-booking]').first().click();await page.locator('#edit-booking-form [name=notes]').fill('Changed through admin');
+  await page.locator('#edit-booking-form [type=submit]').click();await page.locator('[role=dialog]').waitFor({state:'detached'});assert.equal(records[0].notes,'Changed through admin');
+  await page.locator('[data-action=delete-booking]').first().click();await page.locator('[data-action=confirm-delete-booking]').click();
+  await page.locator('[role=dialog]').waitFor({state:'detached'});assert.equal(records.length,0);
+  await page.locator('[data-tab=more]').click();await page.locator('[data-tab=services]').click();await page.locator('[data-action=edit-service]').first().click();
+  await page.locator('#add-service-addon').click();await page.locator('[data-addon-name]').nth(1).fill('Seat care');await page.locator('[data-addon-description]').nth(1).fill('Deep cleaning');await page.locator('[data-addon-price]').nth(1).fill('1500');
+  await inspect(page,'admin-addons',width,theme,true);
+  assert.equal(await page.evaluate(()=>window.CleanThingsHandleBack()),true);assert.equal(await page.locator('[role=dialog]').count(),0);
   await page.locator('[data-tab=schedule]').click();await page.locator('#admin-date').waitFor();await inspect(page,'admin-schedule',width,theme);
   await page.locator('[data-tab=more]').click();await page.locator('[data-tab=settings]').click();await inspect(page,'admin-settings',width,theme);
   results.push({name:'local-mocked-timing',width,theme,homeMs:Number(homeMs.toFixed(1)),submitMs:Number(submitMs.toFixed(1))});

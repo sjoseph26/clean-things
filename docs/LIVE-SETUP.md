@@ -1,4 +1,4 @@
-# Deployment and recovery guide - v0.6.1
+# Deployment and recovery guide - v0.6.2
 
 This guide describes the prepared candidate. No production database change or GitHub publication was performed during this repair.
 
@@ -36,7 +36,7 @@ For a live update set these variables privately and run `bash build-apk.sh live`
 
 The live build refuses to create a replacement signing key. The original key recovered during this repair matches the v0.5.5 certificate, but is excluded from all source packages and Git. The old prototype uses a development certificate; retain it for prototype upgrade continuity and plan a proper production signing strategy before a public release.
 
-The v0.6.1 live package keeps `gy.cleanthings.app` and increments version code to 13. Its APK signature can be verified with Android `apksigner verify --verbose --print-certs`. Install over the old prototype only after the migration and staging gates pass. Do not uninstall first if you intend to keep the existing installation. Moving bundled content from a file origin to HTTPS means users must sign in again; local file-origin preferences/demo state are not migrated. Shared backend records remain authoritative.
+The v0.6.2 live package keeps `gy.cleanthings.app` and increments version code to 14. Its APK signature can be verified with Android `apksigner verify --verbose --print-certs`. Install over the old prototype only after the migration and staging gates pass. Do not uninstall first if you intend to keep the existing installation. Moving bundled content from a file origin to HTTPS means users must sign in again; local file-origin preferences/demo state are not migrated. Shared backend records remain authoritative.
 
 Test on an actual Android phone: fresh launch, existing install update, sign-in, GPS allow/deny/approximate, file picker and proof upload, dark mode, back navigation, network loss and restart. Building and examining the APK cannot certify these interactions.
 

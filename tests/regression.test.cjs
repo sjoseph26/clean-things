@@ -88,3 +88,62 @@ test('PTR-07 app protects booking, sign-in and settings forms while allowing liv
   t.a.ui.screen='home';t.a.render();const before=t.calls.filter(x=>x==='services').length;swipe();await tick();assert.equal(t.calls.filter(x=>x==='services').length,before+1);assert.equal(t.w.document.querySelector('.refresh-button'),null);assert.equal(t.w.document.getElementById('accessible-refresh').hidden,false);
  }finally{t.close()}
 });
+
+test('ADMIN-01 incomplete or failed customer directory retains authenticated admin',async()=>{
+ const t=await setup({admin:true});try{
+  assert.equal(t.a.currentAccount().role,'admin');
+  t.backend.listProfiles=async()=>{throw Error('temporary network failure')};
+  await t.a.activateAccount(await t.backend.getMyProfile());
+  assert.equal(t.a.currentAccount().role,'admin');
+  t.a.ui.screen='admin';t.a.render();assert.match(t.w.document.getElementById('app-main').textContent,/Business overview/);
+ }finally{t.close()}
+});
+test('ADMIN-02 structured add-ons keep numeric prices, literal descriptions and identities on rename',async()=>{
+ const t=await setup({admin:true});try{
+  const service=t.a.services[0];t.a.openServiceEditor(service);
+  const form=t.w.document.getElementById('service-form');let saved;
+  t.backend.saveService=async row=>{saved=row};
+  form.querySelector('[data-addon-name]').value='Renamed shine';
+  form.querySelector('[data-addon-description]').value='Price | stays separate\nSecond line';
+  form.querySelector('[data-addon-price]').value='1250.50';
+  t.w.document.getElementById('add-service-addon').click();
+  const row=form.querySelectorAll('.service-addon-row')[1];
+  row.querySelector('[data-addon-name]').value='Complimentary wipe';row.querySelector('[data-addon-price]').value='0';
+  form.dispatchEvent(new t.w.Event('submit',{cancelable:true,bubbles:true}));await tick();
+  assert.equal(saved.add_ons[0].id,'tyre-shine');assert.equal(saved.add_ons[0].price,1250.5);
+  assert.equal(saved.add_ons[0].description,'Price | stays separate\nSecond line');assert.equal(saved.add_ons[1].price,0);
+  assert.ok(saved.add_ons[1].id.startsWith('addon-'));
+  t.a.openServiceEditor(service);t.w.document.querySelector('[data-remove-addon]').click();
+  assert.equal(t.w.document.querySelectorAll('.service-addon-row').length,1);
+ }finally{t.close()}
+});
+test('ADMIN-03 empty or negative add-on price cannot save; failed save preserves draft',async()=>{
+ const t=await setup({admin:true});try{
+  t.a.openServiceEditor(t.a.services[0]);const form=t.w.document.getElementById('service-form');let calls=0;
+  t.backend.saveService=async()=>{calls++;throw Error('offline')};
+  for(const value of ['', '-5']){form.querySelector('[data-addon-price]').value=value;form.dispatchEvent(new t.w.Event('submit',{cancelable:true,bubbles:true}));await tick();}
+  assert.equal(calls,0);form.querySelector('[data-addon-price]').value='50';form.dispatchEvent(new t.w.Event('submit',{cancelable:true,bubbles:true}));await tick();
+  assert.equal(calls,1);assert.equal(form.querySelector('[data-addon-price]').value,'50');assert.equal(t.a.services[0].addOns[0].price,800);assert.equal(form.querySelector('[type=submit]').disabled,false);
+ }finally{t.close()}
+});
+test('ADMIN-04 month combines with search/status and includes Guyana walk-in month',async()=>{
+ const t=await setup({admin:true});try{
+  t.a.state.bookings=[{...booking(t.a),date:'2026-10-10',reference:'CT-OCT'}, {...booking(t.a),date:'2026-11-01',reference:'CT-NOV'}, {...booking(t.a),date:'',walkIn:true,createdAt:'2026-11-01T02:00:00Z',reference:'CT-WALK'}];
+  t.a.ui.screen='admin';t.a.ui.adminTab='bookings';t.a.render();
+  const month=t.w.document.getElementById('admin-booking-month');month.value='2026-10';month.dispatchEvent(new t.w.Event('change'));
+  const text=()=>t.w.document.getElementById('app-main').textContent;
+  assert.match(text(),/CT-OCT/);assert.match(text(),/CT-WALK/);assert.doesNotMatch(text(),/CT-NOV/);
+  t.a.ui.adminSearch='CT-OCT';t.a.render();assert.doesNotMatch(text(),/CT-WALK/);
+  t.a.ui.adminStatus='Completed';t.a.render();assert.match(text(),/No matching bookings/);
+  t.a.ui.adminSearch='';t.a.ui.adminStatus='All';t.a.render();t.w.document.getElementById('clear-booking-month').click();assert.match(text(),/CT-NOV/);
+ }finally{t.close()}
+});
+test('BACK-01 native and browser Back close pop-ups without replacing underlying unsaved form',async()=>{
+ const t=await setup();try{
+  t.a.navigate('booking',{serviceId:'essential'});t.a.ui.bookingStep=3;t.a.render();
+  const notes=t.w.document.getElementById('notes');notes.value='Unsaved details';t.a.showServiceDetails('essential');
+  assert.equal(t.w.CleanThingsHandleBack(),true);assert.equal(t.w.CleanThingsHandleBack(),false);assert.equal(notes.value,'Unsaved details');
+  t.a.showServiceDetails('essential');t.w.dispatchEvent(new t.w.PopStateEvent('popstate',{state:{screen:'home'}}));
+  assert.equal(t.a.ui.screen,'booking');assert.equal(t.w.document.getElementById('notes'),notes);assert.equal(t.w.document.querySelector('[role=dialog]'),null);
+ }finally{t.close()}
+});
