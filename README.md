@@ -1,8 +1,8 @@
 # Clean Things v0.6.9
 
-Android booking and service-management prototype. This is a **repair candidate**, with local automated evidence and a reproducible native build. It is not certified as deployment-ready; the new database migration and live acceptance checks are still required.
+Android booking and service-management prototype. This is a **repair candidate**, with local automated evidence and a reproducible native build. The targeted database hotfix is live; real-device acceptance checks are still required before broader rollout.
 
-This is Randy’s tester update, based on v0.6.2. The database repair needs activation before payment-image and evening-hours acceptance. See [current status](docs/RANDY-FEEDBACK-v0.6.9.md). Biometric sign-in and staged MFA remain separate.
+This is Randy’s tester update, based on v0.6.2. The database repair is live and its configuration and evening hours are verified; real-phone payment-image acceptance remains pending. See [current status](docs/RANDY-FEEDBACK-v0.6.9.md). Biometric sign-in and staged MFA remain separate.
 
 ## Run the fictional demo
 

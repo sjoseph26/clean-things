@@ -2,10 +2,10 @@
 
 ## v0.6.9 tester update
 
-This build addresses Randy's payment-image setup error, weekday/weekend evening hours, newest-first admin bookings and the Customer/Admin view switch. It is based on the v0.6.2 tester baseline; biometric login and staged MFA remain on their separate feature branch. The targeted database repair is prepared and locally tested, but awaits owner confirmation before live application. See [Randy feedback and acceptance](RANDY-FEEDBACK-v0.6.9.md).
+This build addresses Randy's payment-image setup error, weekday/weekend evening hours, newest-first admin bookings and the Customer/Admin view switch. It is based on the v0.6.2 tester baseline; biometric login and staged MFA remain on their separate feature branch. The targeted database repair was applied to Clean Things Live after owner approval on 29 September 2026. All seven configuration checks passed, and an authenticated read-only availability call returned the expected weekday/weekend hours. Real-phone receipt upload and acceptance remain pending. See [Randy feedback and acceptance](RANDY-FEEDBACK-v0.6.9.md).
 
 
-This guide describes the prepared candidate. No production database change or GitHub publication was performed during this repair.
+The v0.6.9 targeted hotfix is deployed. Source is published on the isolated fix/randy-feedback-v069 branch; main and the biometric feature branch are unchanged. The staging guidance below remains applicable to future rollouts. See [live verification](evidence/randy-20260929-live.md).
 
 ## 1. Prepare a staging project
 
