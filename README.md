@@ -65,3 +65,15 @@ The output is `dist/CleanThings-qa-v0.6.2.apk`, a separate `gy.cleanthings.app.q
 | [Contributing](CONTRIBUTING.md) | Review and evidence expectations |
 
 Configuration, signing material, generated APKs, SDKs and dependencies are not committed. No historical Git commits or completed independent evaluations have been invented.
+
+
+## 3 October 2026 submission handover
+
+The assessment submission uses a **frozen v0.6.10-live APK**, while the reproducible source on this branch remains **v0.6.2**. Do not treat this branch as matching v0.6.10 source.
+
+- [Submission handover](submission/README.md) — frozen APK identity, checksum, source/binary distinction and deferred work.
+- [Submission guides](docs/guides/README.md) — final User, Deployment and Administrative guide handover.
+- Frozen APK identity: `CleanThings-Live-v0.6.10.apk`, package `gy.cleanthings.app`, version code `22`.
+- SHA-256: `aa20d0b9c4deb8d6f2771bb647f5c3955c159395c04ac4ef7620ecee6cade702`.
+
+The v0.6.10 submission keeps MMG payment verification/manual receipt sharing as current behavior. Automated MMG checkout/refunds and the proposed 15% fee for cancellation requests submitted less than 24 hours before the appointment remain future work.
